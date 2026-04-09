@@ -8,11 +8,22 @@ variable equals the sum of its direct children at every timestep.
 Error metric (per timestep):
     e = |parent - sum_of_children| / |parent|
 
-A scenario passes if e < threshold at ALL timesteps for ALL parent variables.
+Two pass modes are available (select with --pass_mode):
+
+  mean   (default) — a scenario passes if its MEAN relative error across all
+                     timesteps is below the threshold.  This matches the
+                     internal validation approach used by Li et al. (2025):
+                     "258 scenarios exhibited lower sum-check errors than
+                     the 1.2% average error in the AR6 Scenarios Database."
+
+  strict           — a scenario passes only if the relative error is below
+                     the threshold at EVERY SINGLE timestep.  More
+                     conservative; useful as a formal consistency gate.
 
 Usage:
     python sum_check.py --run_id xgb_04
     python sum_check.py --run_id xgb_04 --threshold 0.05
+    python sum_check.py --run_id xgb_04 --pass_mode strict
     python sum_check.py --run_id xgb_04 --use_ground_truth
 """
 
@@ -207,8 +218,25 @@ def run_sum_check(
     return pivot[keep]
 
 
-def scenario_summary(timestep_df: pd.DataFrame, threshold: float) -> pd.DataFrame:
-    """Aggregate per-timestep results to per-(Model, Scenario, Region, parent_variable)."""
+def scenario_summary(
+    timestep_df: pd.DataFrame,
+    threshold: float,
+    pass_mode: str = "mean",
+) -> pd.DataFrame:
+    """Aggregate per-timestep results to per-(Model, Scenario, Region, parent_variable).
+
+    Parameters
+    ----------
+    timestep_df : DataFrame returned by run_sum_check.
+    threshold   : Relative-error threshold (same value used in run_sum_check).
+    pass_mode   : How a scenario is deemed to pass.
+                  "mean"   — scenario mean error < threshold  (default; matches
+                             Li et al. 2025 internal validation).
+                  "strict" — error < threshold at every single timestep.
+    """
+    if pass_mode not in ("mean", "strict"):
+        raise ValueError(f"pass_mode must be 'mean' or 'strict', got {pass_mode!r}")
+
     group_cols = ["Model", "Scenario", "Region", "Scenario_Category", "parent_variable"]
     summary = (
         timestep_df.groupby(group_cols)
@@ -221,7 +249,14 @@ def scenario_summary(timestep_df: pd.DataFrame, threshold: float) -> pd.DataFram
         )
         .reset_index()
     )
-    summary["passed"]         = summary["n_failed_timesteps"] == 0
+
+    if pass_mode == "mean":
+        # Scenario passes if mean error across all timesteps is below threshold
+        summary["passed"] = summary["mean_error"] < threshold
+    else:
+        # Scenario passes only if every single timestep is below threshold
+        summary["passed"] = summary["n_failed_timesteps"] == 0
+
     summary["mean_error_pct"] = summary["mean_error"] * 100
     summary["max_error_pct"]  = summary["max_error"] * 100
     return summary.sort_values(["parent_variable", "mean_error"], ascending=[True, False])
@@ -231,15 +266,21 @@ def scenario_summary(timestep_df: pd.DataFrame, threshold: float) -> pd.DataFram
 # Reporting
 # ---------------------------------------------------------------------------
 
-def report_overview(summary: pd.DataFrame, threshold: float):
+def report_overview(summary: pd.DataFrame, threshold: float, pass_mode: str = "mean"):
     n_total  = len(summary)
     n_passed = summary["passed"].sum()
     pass_rate = 100 * n_passed / n_total if n_total > 0 else 0.0
 
+    if pass_mode == "mean":
+        threshold_desc = f"{threshold*100:.1f}% mean error across timesteps  [mean mode — Li et al. 2025]"
+    else:
+        threshold_desc = f"{threshold*100:.1f}% error at every timestep  [strict mode]"
+
     print(f"\n{'='*60}")
     print("SUM CHECK OVERVIEW (all parent variables combined)")
     print(f"{'='*60}")
-    print(f"  Threshold             : {threshold*100:.1f}% error at every timestep")
+    print(f"  Pass mode             : {pass_mode}")
+    print(f"  Threshold             : {threshold_desc}")
     print(f"  Total scenario-regions: {n_total:,}")
     print(f"  Passed                : {n_passed:,}  ({pass_rate:.1f}%)")
     print(f"  Failed                : {n_total - n_passed:,}  ({100-pass_rate:.1f}%)")
@@ -345,7 +386,16 @@ def main():
     parser.add_argument("--run_id", required=True, help="Run ID, e.g. xgb_04")
     parser.add_argument(
         "--threshold", type=float, default=0.012,
-        help="Max allowed relative error per timestep (default: 0.012 = 1.2%%)"
+        help="Relative-error threshold (default: 0.012 = 1.2%%, matching AR6 vetting average)"
+    )
+    parser.add_argument(
+        "--pass_mode", choices=["mean", "strict"], default="mean",
+        help=(
+            "How a scenario is judged to pass (default: mean). "
+            "'mean' — scenario mean error across timesteps < threshold "
+            "(matches Li et al. 2025 internal validation). "
+            "'strict' — error < threshold at every single timestep."
+        )
     )
     parser.add_argument(
         "--abs_floor", type=float, default=1.0,
@@ -399,7 +449,7 @@ def main():
     sys.stdout = _Tee(out_dir / "report.txt")
 
     print(f"\n  Running sum check (threshold={args.threshold*100:.1f}%, "
-          f"abs_floor={args.abs_floor})...")
+          f"pass_mode={args.pass_mode}, abs_floor={args.abs_floor})...")
 
     # ---- Run check for each parent variable ----
     all_timestep_dfs = []
@@ -410,13 +460,13 @@ def main():
         print(f"    Timestep rows: {len(tdf):,}")
 
     timestep_df = pd.concat(all_timestep_dfs, ignore_index=True)
-    summary     = scenario_summary(timestep_df, args.threshold)
+    summary     = scenario_summary(timestep_df, args.threshold, pass_mode=args.pass_mode)
 
     print(f"\n  Total timestep rows evaluated: {len(timestep_df):,}")
     print(f"  Total scenario-regions:        {len(summary):,}")
 
     # ---- Reports ----
-    report_overview(summary, args.threshold)
+    report_overview(summary, args.threshold, pass_mode=args.pass_mode)
     report_by_parent(summary, args.threshold)
     report_by_category(summary)
     report_error_distribution(summary)

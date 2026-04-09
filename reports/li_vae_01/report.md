@@ -1,7 +1,7 @@
 # Li et al. Validation — VAE (li_vae_01)
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-04-09 14:42
+**Generated:** 2026-04-09 15:04
 **Results path:** `results/xgb/li_vae_01/`
 
 ---
@@ -10,7 +10,7 @@
 
 | Check | Metric | Predictions | Ground Truth |
 | --- | --- | --- | --- |
-| Hierarchy Sum Check | Scenario-region pass rate | 0.0% | 23.2% |
+| Hierarchy Sum Check | Scenario-region pass rate | 0.0% | 29.5% |
 |  | Mean relative error | 1979.419% | 26.303% |
 | Growth Rate Plausibility | Timestep violation rate | 2.0% | 1.9% |
 | Physical Bounds Check | Timestep violation rate | 2.00% | 1.72% |

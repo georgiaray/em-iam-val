@@ -199,11 +199,11 @@ def run_sum_check_pred(test_data, values, targets, run_id, threshold, abs_floor)
         long = build_long(test_data, values, targets, "predictions")
         all_tdfs = [_run(long, p, c, threshold, abs_floor) for p, c in hierarchy.items()]
         timestep_df = pd.concat(all_tdfs, ignore_index=True)
-        summary     = scenario_summary(timestep_df, threshold)
+        summary     = scenario_summary(timestep_df, threshold, pass_mode="mean")
 
         n_pass = summary["passed"].sum()
         n_tot  = len(summary)
-        print(f"\n  Passing: {n_pass} / {n_tot}  ({100*n_pass/n_tot:.1f}%)")
+        print(f"\n  Passing (mean mode): {n_pass} / {n_tot}  ({100*n_pass/n_tot:.1f}%)")
 
         summary.to_csv(out_dir / "scenario_summary.csv",  index=False)
         timestep_df.to_csv(out_dir / "timestep_errors.csv", index=False)

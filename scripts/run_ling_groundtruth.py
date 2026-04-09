@@ -210,11 +210,11 @@ def run_sum_check(test_data, values, targets, run_id, threshold, abs_floor):
             all_timestep_dfs.append(tdf)
 
         timestep_df = pd.concat(all_timestep_dfs, ignore_index=True)
-        summary = scenario_summary(timestep_df, threshold)
+        summary = scenario_summary(timestep_df, threshold, pass_mode="mean")
 
         n_pass = summary["passed"].sum()
         n_total = len(summary)
-        print(f"\n  Scenarios passing: {n_pass} / {n_total}  ({100*n_pass/n_total:.1f}%)")
+        print(f"\n  Scenarios passing (mean mode): {n_pass} / {n_total}  ({100*n_pass/n_total:.1f}%)")
 
         summary_path  = out_dir / "scenario_summary.csv"
         timestep_path = out_dir / "timestep_errors.csv"

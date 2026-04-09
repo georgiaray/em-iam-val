@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-04-08 11:18
+**Generated:** 2026-04-09 15:11
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -10,7 +10,7 @@
 
 | Check | Metric | Predictions | Ground Truth |
 | --- | --- | --- | --- |
-| Hierarchy Sum Check | Scenario-region pass rate | 0.0% | 56.7% |
+| Hierarchy Sum Check | Scenario-region pass rate | 1.3% | 66.4% |
 |  | Mean relative error | 6.538% | 1.365% |
 | Growth Rate Plausibility | Timestep violation rate | 3.0% | 1.8% |
 | Physical Bounds Check | Timestep violation rate | 3.72% | 1.59% |
@@ -28,7 +28,7 @@ ground truth pass rate to understand baseline data consistency._
 
 | Parent Variable | Scenario-regions | Pass rate (%) | Mean error (%) | Max error (%) |
 | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity | 1984 | 0.0000 | 6.5384 | 219.8757 |
+| Secondary Energy\|Electricity | 1984 | 1.2601 | 6.5384 | 219.8757 |
 
 ### Error Distribution
 
