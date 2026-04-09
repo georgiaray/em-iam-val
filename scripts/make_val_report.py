@@ -117,6 +117,141 @@ def style_ax(ax, title="", xlabel="", ylabel=""):
 
 
 # ---------------------------------------------------------------------------
+# Example failure helpers
+# ---------------------------------------------------------------------------
+
+def _example_sum_failure(te_df: pd.DataFrame, sc_df: pd.DataFrame, label: str) -> str:
+    """Pick the scenario closest to the median mean error and show its year-by-year breakdown.
+
+    Shows: Year | Parent value | Sum of children | Difference | Error %
+    """
+    failing = sc_df[~sc_df["passed"]].copy()
+    if failing.empty:
+        return f"_No failures found in {label}._"
+
+    # Pick the scenario nearest the median mean error — representative, not extreme
+    median_err = failing["mean_error"].median()
+    idx = (failing["mean_error"] - median_err).abs().idxmin()
+    row = failing.loc[idx]
+
+    model    = row.get("Model",    "—")
+    scenario = row.get("Scenario", "—")
+    region   = row.get("Region",   "—")
+    cat      = row.get("Scenario_Category", "—")
+    parent   = row.get("parent_variable",   "—")
+
+    # Pull the year-by-year rows for this scenario
+    mask = (
+        (te_df["Scenario"] == scenario) &
+        (te_df["Region"]   == region)   &
+        (te_df.get("parent_variable", pd.Series(parent, index=te_df.index)) == parent)
+    )
+    if "Model" in te_df.columns:
+        mask &= (te_df["Model"] == model)
+
+    rows_ts = te_df[mask].sort_values("Year")
+    if rows_ts.empty:
+        return f"_Could not locate timestep rows for example scenario in {label}._"
+
+    tbl = pd.DataFrame({
+        "Year":           rows_ts["Year"].values,
+        "Parent value":   rows_ts["total"].round(3).values,
+        "Sum of children":rows_ts["sum_components"].round(3).values,
+        "Difference":     (rows_ts["total"] - rows_ts["sum_components"]).round(3).values,
+        "Error (%)":      (rows_ts["abs_error"] * 100).round(2).values,
+    })
+
+    header = (
+        f"**Scenario:** {model} | {scenario} | {region} | {cat}  \n"
+        f"**Parent variable:** {parent}  \n"
+        f"**Mean error:** {row['mean_error_pct']:.2f}%  (median failing scenario)"
+    )
+    return f"#### Example failure — {label}\n\n{header}\n\n" + md_table(
+        tbl, fmt={c: "{}" for c in tbl.columns}
+    )
+
+
+def _example_plausibility_failure(viol_df: pd.DataFrame, label: str) -> str:
+    """Pick the most severe growth-rate violation and show its context."""
+    violations = viol_df[viol_df["violation"]].copy()
+    if violations.empty:
+        return f"_No violations found in {label}._"
+
+    sev = violations["severity"].replace([np.inf, -np.inf], np.nan).dropna()
+    if sev.empty:
+        return f"_No finite-severity violations found in {label}._"
+
+    idx  = sev.idxmax()
+    row  = violations.loc[idx]
+
+    direction = (
+        "above upper bound" if row["growth_rate"] > row["upper_bound"]
+        else "below lower bound"
+    )
+
+    detail = pd.DataFrame([{
+        "Variable":       row["Variable"],
+        "Scenario":       row.get("Scenario", "—"),
+        "Region":         row.get("Region",   "—"),
+        "Category":       row.get("Scenario_Category", "—"),
+        "Year":           int(row["Year"]),
+        "Previous value": round(float(row["Value_lag5"]), 3),
+        "Current value":  round(float(row["Value"]),     3),
+        "Growth rate":    round(float(row["growth_rate"]), 4),
+        "Lower bound":    round(float(row["lower_bound"]), 4),
+        "Upper bound":    round(float(row["upper_bound"]), 4),
+        "Direction":      direction,
+        "Severity (bw)":  round(float(row["severity"]),   3),
+    }])
+
+    header = f"**Most severe violation** (severity = bound-widths outside the allowed range)"
+    return f"#### Example violation — {label}\n\n{header}\n\n" + md_table(
+        detail, fmt={c: "{}" for c in detail.columns}
+    )
+
+
+def _example_bounds_failure(viol_df: pd.DataFrame, label: str) -> str:
+    """Pick the most extreme bounds violation (largest % deviation from the breached bound)."""
+    violations = viol_df[viol_df["violation"]].copy()
+    if violations.empty:
+        return f"_No violations found in {label}._"
+
+    # Compute deviation as % of the bound that was breached
+    def _pct_dev(row):
+        if row["below_lower"] and pd.notna(row["lower_bound"]) and row["lower_bound"] != 0:
+            return abs((row["Value"] - row["lower_bound"]) / row["lower_bound"]) * 100
+        if row["above_upper"] and pd.notna(row["upper_bound"]) and row["upper_bound"] != 0:
+            return abs((row["Value"] - row["upper_bound"]) / row["upper_bound"]) * 100
+        return 0.0
+
+    violations["_pct_dev"] = violations.apply(_pct_dev, axis=1)
+    idx = violations["_pct_dev"].idxmax()
+    row = violations.loc[idx]
+
+    direction = "below lower bound" if row["below_lower"] else "above upper bound"
+    bound_val = row["lower_bound"] if row["below_lower"] else row["upper_bound"]
+
+    detail = pd.DataFrame([{
+        "Variable":      row["Variable"],
+        "Scenario":      row.get("Scenario", "—"),
+        "Region":        row.get("Region",   "—"),
+        "Category":      row.get("Scenario_Category", "—"),
+        "Year":          int(row["Year"]),
+        "Value":         round(float(row["Value"]),      3),
+        "Bound breached":round(float(bound_val),         3),
+        "Direction":     direction,
+        "Lower bound":   round(float(row["lower_bound"]), 3) if pd.notna(row["lower_bound"]) else "—",
+        "Upper bound":   round(float(row["upper_bound"]), 3) if pd.notna(row["upper_bound"]) else "—",
+        "Deviation (%)": round(float(row["_pct_dev"]),    2),
+    }])
+
+    header = f"**Most extreme violation** (largest % deviation from the breached bound)"
+    return f"#### Example violation — {label}\n\n{header}\n\n" + md_table(
+        detail, fmt={c: "{}" for c in detail.columns}
+    )
+
+
+# ---------------------------------------------------------------------------
 # Section builders
 # ---------------------------------------------------------------------------
 
@@ -326,6 +461,17 @@ def section_sum_check(results_base: Path, fig_dir: Path) -> tuple[str, list]:
         blocks.append("### Error Percentile Comparison — Predictions vs Ground Truth\n\n"
                       + md_table(tbl, fmt={c: "{}" for c in tbl.columns}))
 
+    # --- Example failures ---
+    if pred_te is not None and pred_sc is not None:
+        blocks.append(
+            "### Example Failure\n\n"
+            "_The median failing scenario (by mean error) is shown below "
+            "to illustrate a typical hierarchy violation._\n\n"
+            + _example_sum_failure(pred_te, pred_sc, "predictions")
+        )
+    if gt_te is not None and gt_sc is not None:
+        blocks.append(_example_sum_failure(gt_te, gt_sc, "ground truth"))
+
     return "\n\n".join(blocks), figures
 
 
@@ -437,6 +583,15 @@ def section_plausibility(results_base: Path, fig_dir: Path) -> tuple[str, list]:
         cat = cat.sort_values("rate_%", ascending=False)
         cat.columns = ["Category", "Timesteps", "Violations", "Violation rate (%)"]
         blocks.append("### Violation Rate by Scenario Category\n\n" + md_table(cat))
+
+    # --- Example failures ---
+    blocks.append(
+        "### Example Violation\n\n"
+        "_The most severe violation (highest severity in bound-widths) is shown below._\n\n"
+        + _example_plausibility_failure(viol, "predictions")
+    )
+    if gt_viol is not None:
+        blocks.append(_example_plausibility_failure(gt_viol, "ground truth"))
 
     return "\n\n".join(blocks), figures
 
@@ -658,6 +813,18 @@ def section_bounds(results_base: Path, fig_dir: Path) -> tuple[str, list]:
                 f"### Violation Rate by Variable — Predictions vs Ground Truth\n\n"
                 f"![Bounds violation rate pred vs GT]({rel})"
             )
+
+    # --- Example failures ---
+    if pred_viol is not None:
+        blocks.append(
+            "### Example Violation\n\n"
+            "_The most extreme violation (largest % deviation from the breached bound) "
+            "is shown below._\n\n"
+            + _example_bounds_failure(pred_viol, "predictions")
+        )
+    gt_viol_df = load(results_base, "bounds_check_ground_truth", "violations.csv")
+    if gt_viol_df is not None:
+        blocks.append(_example_bounds_failure(gt_viol_df, "ground truth"))
 
     return "\n\n".join(blocks), figures
 

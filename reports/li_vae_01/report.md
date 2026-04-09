@@ -1,7 +1,7 @@
 # Li et al. Validation — VAE (li_vae_01)
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-04-09 15:14
+**Generated:** 2026-04-09 15:52
 **Results path:** `results/xgb/li_vae_01/`
 
 ---
@@ -47,6 +47,47 @@ ground truth pass rate to understand baseline data consistency._
 | p90 | 3833.5010 | 54.7023 |
 | p95 | 5538.8209 | 60.3917 |
 | p99 | 8133.2140 | 65.0777 |
+
+### Example Failure
+
+_The median failing scenario (by mean error) is shown below to illustrate a typical hierarchy violation._
+
+#### Example failure — predictions
+
+**Scenario:** VAE | gen_03379 | World | C1234  
+**Parent variable:** Secondary Energy|Electricity  
+**Mean error:** 1456.81%  (median failing scenario)
+
+| Year | Parent value | Sum of children | Difference | Error (%) |
+| --- | --- | --- | --- | --- |
+| 2020.0 | 2.525 | 187.912 | -185.387 | 7341.11 |
+| 2030.0 | 9.094 | 213.977 | -204.883 | 2252.97 |
+| 2040.0 | 26.088 | 257.249 | -231.161 | 886.09 |
+| 2050.0 | 46.829 | 331.08 | -284.252 | 607.01 |
+| 2060.0 | 67.985 | 420.165 | -352.18 | 518.03 |
+| 2070.0 | 101.82 | 564.521 | -462.7 | 454.43 |
+| 2080.0 | 146.3 | 716.311 | -570.011 | 389.62 |
+| 2090.0 | 197.342 | 864.468 | -667.126 | 338.05 |
+| 2100.0 | 220.682 | 935.611 | -714.93 | 323.96 |
+
+#### Example failure — ground truth
+
+**Scenario:** COFFEE 1.1 | EN_NPi2020_1800f | World | C5  
+**Parent variable:** Primary Energy  
+**Mean error:** 35.06%  (median failing scenario)
+
+| Year | Parent value | Sum of children | Difference | Error (%) |
+| --- | --- | --- | --- | --- |
+| 2010.0 | 489.143 | 417.293 | 71.85 | 14.69 |
+| 2020.0 | 546.316 | 462.767 | 83.549 | 15.29 |
+| 2030.0 | 565.654 | 507.196 | 58.458 | 10.33 |
+| 2040.0 | 605.474 | 519.901 | 85.574 | 14.13 |
+| 2050.0 | 641.068 | 509.227 | 131.841 | 20.57 |
+| 2060.0 | 685.043 | 479.318 | 205.725 | 30.03 |
+| 2070.0 | 755.438 | 455.189 | 300.248 | 39.74 |
+| 2080.0 | 844.417 | 363.234 | 481.183 | 56.98 |
+| 2090.0 | 921.917 | 255.004 | 666.913 | 72.34 |
+| 2100.0 | 975.388 | 229.295 | 746.093 | 76.49 |
 
 ---
 
@@ -102,6 +143,26 @@ _Severity = how many bound-widths the growth rate exceeds the limit._
 | C1234 | 1280000 | 41641 | 3.2500 |
 | C78 | 1280000 | 21687 | 1.6900 |
 | C56 | 1280000 | 13472 | 1.0500 |
+
+### Example Violation
+
+_The most severe violation (highest severity in bound-widths) is shown below._
+
+#### Example violation — predictions
+
+**Most severe violation** (severity = bound-widths outside the allowed range)
+
+| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Emissions\|Kyoto Gases | gen_00821 | World | C1234 | 2100 | 0.041 | -2004.938 | -48883.2857 | -2.973 | 0.2174 | below lower bound | 15321.179 |
+
+#### Example violation — ground truth
+
+**Most severe violation** (severity = bound-widths outside the allowed range)
+
+| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity | EN_NPi2020_800 | World | C3 | 2020 | 0.0 | 0.05 | 82458089.2752 | -0.0252 | 0.5641 | above upper bound | 139918689.859 |
 
 ---
 
@@ -162,3 +223,23 @@ _Predictions show +0.276 pp more violations than ground truth._
 ### Violation Rate by Variable — Predictions vs Ground Truth
 
 ![Bounds violation rate pred vs GT](figures/bounds_violation_rate_pred_vs_gt.png)
+
+### Example Violation
+
+_The most extreme violation (largest % deviation from the breached bound) is shown below._
+
+#### Example violation — predictions
+
+**Most extreme violation** (largest % deviation from the breached bound)
+
+| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Hydro | gen_18935 | World | C56 | 2090 | 0.0 | 0.0 | below lower bound | 0.0 | 8.625 | 100.0 |
+
+#### Example violation — ground truth
+
+**Most extreme violation** (largest % deviation from the breached bound)
+
+| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Primary Energy\|Oil | EN_INDCi2030_1000 | World | C3 | 2010 | 1302.528 | 361.722 | above upper bound | 1.544 | 361.722 | 260.09 |

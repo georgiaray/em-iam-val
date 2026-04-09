@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-04-09 15:15
+**Generated:** 2026-04-09 15:52
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -47,6 +47,53 @@ ground truth pass rate to understand baseline data consistency._
 | p90 | 12.1709 | 3.6437 |
 | p95 | 16.4388 | 5.4734 |
 | p99 | 27.9085 | 12.8627 |
+
+### Example Failure
+
+_The median failing scenario (by mean error) is shown below to illustrate a typical hierarchy violation._
+
+#### Example failure — predictions
+
+**Scenario:** POLES ENGAGE | EN_INDCi2030_1000f_COV_NDCp | TUR | C3  
+**Parent variable:** Secondary Energy|Electricity  
+**Mean error:** 5.07%  (median failing scenario)
+
+| Year | Parent value | Sum of children | Difference | Error (%) |
+| --- | --- | --- | --- | --- |
+| 2025.0 | 1358.654 | 1319.613 | 39.041 | 2.87 |
+| 2030.0 | 1661.869 | 1614.078 | 47.791 | 2.88 |
+| 2035.0 | 1907.483 | 1984.364 | -76.88 | 4.03 |
+| 2040.0 | 2329.942 | 2350.778 | -20.836 | 0.89 |
+| 2045.0 | 2785.21 | 2693.845 | 91.365 | 3.28 |
+| 2050.0 | 3267.89 | 3140.077 | 127.814 | 3.91 |
+| 2060.0 | 3853.846 | 3729.205 | 124.642 | 3.23 |
+| 2070.0 | 4165.657 | 3880.078 | 285.58 | 6.86 |
+| 2080.0 | 4229.573 | 3807.653 | 421.92 | 9.98 |
+| 2090.0 | 4112.924 | 3726.239 | 386.685 | 9.4 |
+| 2100.0 | 3893.672 | 3566.062 | 327.611 | 8.41 |
+
+#### Example failure — ground truth
+
+**Scenario:** REMIND-MAgPIE 2.1-4.2 | EN_NPi2020_1200f | USA | C4  
+**Parent variable:** Secondary Energy|Electricity  
+**Mean error:** 2.62%  (median failing scenario)
+
+| Year | Parent value | Sum of children | Difference | Error (%) |
+| --- | --- | --- | --- | --- |
+| 2015.0 | 16086.5 | 16086.4 | 0.1 | 0.0 |
+| 2020.0 | 16519.2 | 16518.6 | 0.6 | 0.0 |
+| 2025.0 | 17221.9 | 17206.5 | 15.4 | 0.09 |
+| 2030.0 | 18565.5 | 18457.7 | 107.8 | 0.58 |
+| 2035.0 | 19699.9 | 19371.3 | 328.6 | 1.67 |
+| 2040.0 | 22477.9 | 21929.0 | 548.9 | 2.44 |
+| 2045.0 | 25813.9 | 25103.4 | 710.5 | 2.75 |
+| 2050.0 | 28971.6 | 28147.9 | 823.7 | 2.84 |
+| 2055.0 | 31449.2 | 30534.3 | 914.9 | 2.91 |
+| 2060.0 | 33373.1 | 32359.9 | 1013.2 | 3.04 |
+| 2070.0 | 37139.5 | 35690.5 | 1449.0 | 3.9 |
+| 2080.0 | 39949.9 | 37944.1 | 2005.8 | 5.02 |
+| 2090.0 | 42797.4 | 40399.0 | 2398.4 | 5.6 |
+| 2100.0 | 47154.5 | 44389.6 | 2764.9 | 5.86 |
 
 ---
 
@@ -112,6 +159,26 @@ _Severity = how many bound-widths the growth rate exceeds the limit._
 | C8 | 3097 | 79 | 2.5500 |
 | no-climate-assessment | 10070 | 39 | 0.3900 |
 
+### Example Violation
+
+_The most severe violation (highest severity in bound-widths) is shown below._
+
+#### Example violation — predictions
+
+**Most severe violation** (severity = bound-widths outside the allowed range)
+
+| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Geothermal | EN_INDCi2030_1400_COV | R10INDIA+ | C4 | 2035 | -0.0 | 6.643 | 38613.9578 | -0.4082 | 15.342 | above upper bound | 2450.675 |
+
+#### Example violation — ground truth
+
+**Most severe violation** (severity = bound-widths outside the allowed range)
+
+| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Wind | EN_INDCi2030_3000f | ETH | C6 | 2050 | -0.0 | 90.0 | 49478023249920.0 | -0.1557 | 9.0326 | above upper bound | 5384918554126.189 |
+
 ---
 
 ## 3. Regional Consistency
@@ -174,3 +241,23 @@ _Predictions show +2.138 pp more violations than ground truth._
 ### Violation Rate by Variable — Predictions vs Ground Truth
 
 ![Bounds violation rate pred vs GT](figures/bounds_violation_rate_pred_vs_gt.png)
+
+### Example Violation
+
+_The most extreme violation (largest % deviation from the breached bound) is shown below._
+
+#### Example violation — predictions
+
+**Most extreme violation** (largest % deviation from the breached bound)
+
+| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Primary Energy\|Oil | DeepElec_SSP2_def_Budg900 | R10LATIN_AM | C1 | 2070 | -405.891 | 0.268 | below lower bound | 0.268 | 202427.081 | 151417.7 |
+
+#### Example violation — ground truth
+
+**Most extreme violation** (largest % deviation from the breached bound)
+
+| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Primary Energy\|Oil | EN_NPi2020_300f | ZAF | C1 | 2100 | -129.975 | 0.268 | below lower bound | 0.268 | 202427.081 | 48555.28 |
