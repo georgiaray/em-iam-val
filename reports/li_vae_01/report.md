@@ -1,7 +1,7 @@
 # Li et al. Validation — VAE (li_vae_01)
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-04-10 11:06
+**Generated:** 2026-04-10 11:14
 **Results path:** `results/xgb/li_vae_01/`
 
 ---
@@ -183,8 +183,8 @@ _Checks predicted values against hard physical lower bounds (energy variables �
 and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 **Timesteps checked:** 4,320,000  
-**Violations:** 86,400 (2.000%)  
-**Fully clean scenario-regions:** 438,789 / 480,000
+**Violations:** 86,367 (1.999%)  
+**Fully clean scenario-regions:** 438,807 / 480,000
 
 ### Bounds Applied
 
@@ -215,8 +215,8 @@ and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 | Source | Timesteps | Violations | Violation rate |
 | --- | --- | --- | --- |
-| Predictions | 4,320,000 | 86,400 | 2.000% |
-| Ground truth | 228,266 | 3,936 | 1.724% |
+| Predictions | 4,320,000 | 86,367 | 1.999% |
+| Ground truth | 228,266 | 3,933 | 1.723% |
 
 _Predictions show +0.276 pp more violations than ground truth._
 
@@ -234,7 +234,7 @@ _The most extreme violation (largest % deviation from the breached bound) is sho
 
 | Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Hydro | gen_18935 | World | C56 | 2090 | 0.0 | 0.0 | below lower bound | 0.0 | 8.625 | 100.0 |
+| Secondary Energy\|Electricity\|Wind | gen_07202 | World | C1234 | 2090 | 0.0 | 0.54 | below lower bound | 0.54 | 121.042 | 100.00 |
 
 #### Example violation — ground truth
 

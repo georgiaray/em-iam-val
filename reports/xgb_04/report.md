@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-04-10 11:05
+**Generated:** 2026-04-10 11:13
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -252,7 +252,7 @@ _The most extreme violation (largest % deviation from the breached bound) is sho
 
 | Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Primary Energy\|Oil | DeepElec_SSP2_def_Budg900 | R10LATIN_AM | C1 | 2070 | -405.891 | 0.268 | below lower bound | 0.268 | 202427.081 | 151417.7 |
+| Primary Energy\|Oil | DeepElec_SSP2_def_Budg900 | R10LATIN_AM | C1 | 2070 | -405.891 | 0.268 | below lower bound | 0.268 | 202427.081 | 151417.70 |
 
 #### Example violation — ground truth
 

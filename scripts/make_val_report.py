@@ -230,12 +230,19 @@ def _example_bounds_failure(viol_df: pd.DataFrame, label: str) -> str:
     if violations.empty:
         return f"_No violations found in {label}._"
 
-    # Compute deviation as % of the bound that was breached
+    # Compute deviation as % of the bound that was breached.
+    # When the bound is near zero, relative % is meaningless — use absolute difference instead
+    # (returned as a negative number so it sorts below genuine relative deviations).
+    _BOUND_TOL = 1e-3
     def _pct_dev(row):
-        if row["below_lower"] and pd.notna(row["lower_bound"]) and row["lower_bound"] != 0:
-            return abs((row["Value"] - row["lower_bound"]) / row["lower_bound"]) * 100
-        if row["above_upper"] and pd.notna(row["upper_bound"]) and row["upper_bound"] != 0:
-            return abs((row["Value"] - row["upper_bound"]) / row["upper_bound"]) * 100
+        if row["below_lower"] and pd.notna(row["lower_bound"]):
+            if abs(row["lower_bound"]) > _BOUND_TOL:
+                return abs((row["Value"] - row["lower_bound"]) / row["lower_bound"]) * 100
+            return 0.0  # near-zero bound: don't rank by relative %
+        if row["above_upper"] and pd.notna(row["upper_bound"]):
+            if abs(row["upper_bound"]) > _BOUND_TOL:
+                return abs((row["Value"] - row["upper_bound"]) / row["upper_bound"]) * 100
+            return 0.0
         return 0.0
 
     violations["_pct_dev"] = violations.apply(_pct_dev, axis=1)
@@ -245,6 +252,11 @@ def _example_bounds_failure(viol_df: pd.DataFrame, label: str) -> str:
     direction = "below lower bound" if row["below_lower"] else "above upper bound"
     bound_val = row["lower_bound"] if row["below_lower"] else row["upper_bound"]
 
+    dev_str = (
+        f"{row['_pct_dev']:.2f}"
+        if row["_pct_dev"] > 0
+        else "N/A (near-zero bound)"
+    )
     detail = pd.DataFrame([{
         "Variable":      row["Variable"],
         "Scenario":      row.get("Scenario", "—"),
@@ -256,7 +268,7 @@ def _example_bounds_failure(viol_df: pd.DataFrame, label: str) -> str:
         "Direction":     direction,
         "Lower bound":   round(float(row["lower_bound"]), 3) if pd.notna(row["lower_bound"]) else "—",
         "Upper bound":   round(float(row["upper_bound"]), 3) if pd.notna(row["upper_bound"]) else "—",
-        "Deviation (%)": round(float(row["_pct_dev"]),    2),
+        "Deviation (%)": dev_str,
     }])
 
     header = f"**Most extreme violation** (largest % deviation from the breached bound)"

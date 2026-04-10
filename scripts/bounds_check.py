@@ -228,13 +228,16 @@ def run_bounds_check(
         how="inner",  # only variables that have at least one bound
     )
 
+    # Use a small absolute tolerance to avoid flagging floating-point noise
+    # (e.g. a value of -1e-10 against a lower bound of 0.0 is not a real violation).
+    ABS_TOL = 1e-6
     checked["below_lower"] = (
         checked["lower_bound"].notna() &
-        (checked["Value"] < checked["lower_bound"])
+        (checked["Value"] < checked["lower_bound"] - ABS_TOL)
     )
     checked["above_upper"] = (
         checked["upper_bound"].notna() &
-        (checked["Value"] > checked["upper_bound"])
+        (checked["Value"] > checked["upper_bound"] + ABS_TOL)
     )
     checked["violation"] = checked["below_lower"] | checked["above_upper"]
 
