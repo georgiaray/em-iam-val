@@ -25,6 +25,11 @@ Available flags:
     --no-groundtruth      Skip the ground truth reference runs (run_groundtruth.py)
     --no-inter-r2         Skip the inter-variable R² check
     --report              Generate a validation report after all checks complete
+
+Notes:
+    After all checks, predictions and ground truth are always exported in long
+    (tidy) format to results/xgb/<run_id>/predictions/ via export_predictions.py.
+    These CSVs feed the inter-variable correlation section of the report.
 """
 
 import argparse
