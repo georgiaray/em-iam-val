@@ -123,8 +123,16 @@ def style_ax(ax, title="", xlabel="", ylabel=""):
 def _example_sum_failure(te_df: pd.DataFrame, sc_df: pd.DataFrame, label: str) -> str:
     """Pick the scenario closest to the median mean error and show its year-by-year breakdown.
 
-    Shows: Year | Parent value | Sum of children | Difference | Error %
+    Shows: Year | <child 1> | <child 2> | … | Sum of children | Parent value | Difference | Error %
     """
+    # Identify child-variable columns: anything beyond the fixed metadata columns
+    _META_COLS = {
+        "Model", "Scenario", "Region", "Scenario_Category", "Year",
+        "parent_variable", "total", "sum_components", "zero_total",
+        "abs_error", "passed_timestep",
+    }
+    child_cols = [c for c in te_df.columns if c not in _META_COLS]
+
     failing = sc_df[~sc_df["passed"]].copy()
     if failing.empty:
         return f"_No failures found in {label}._"
@@ -153,13 +161,19 @@ def _example_sum_failure(te_df: pd.DataFrame, sc_df: pd.DataFrame, label: str) -
     if rows_ts.empty:
         return f"_Could not locate timestep rows for example scenario in {label}._"
 
-    tbl = pd.DataFrame({
-        "Year":           rows_ts["Year"].values,
-        "Parent value":   rows_ts["total"].round(3).values,
-        "Sum of children":rows_ts["sum_components"].round(3).values,
-        "Difference":     (rows_ts["total"] - rows_ts["sum_components"]).round(3).values,
-        "Error (%)":      (rows_ts["abs_error"] * 100).round(2).values,
-    })
+    # Build table: Year, then one column per child, then aggregates
+    tbl_dict = {"Year": rows_ts["Year"].values}
+    # Use shortened child names (last segment after |) for readability
+    for child in child_cols:
+        if child in rows_ts.columns:
+            short = child.split("|")[-1].strip()
+            tbl_dict[short] = rows_ts[child].round(3).values
+    tbl_dict["Sum of children"] = rows_ts["sum_components"].round(3).values
+    tbl_dict["Parent value"]    = rows_ts["total"].round(3).values
+    tbl_dict["Difference"]      = (rows_ts["total"] - rows_ts["sum_components"]).round(3).values
+    tbl_dict["Error (%)"]       = (rows_ts["abs_error"] * 100).round(2).values
+
+    tbl = pd.DataFrame(tbl_dict)
 
     header = (
         f"**Scenario:** {model} | {scenario} | {region} | {cat}  \n"

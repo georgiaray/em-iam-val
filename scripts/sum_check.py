@@ -214,7 +214,7 @@ def run_sum_check(
 
     keep = ["Model", "Scenario", "Region", "Scenario_Category", "Year",
             "parent_variable", "total", "sum_components", "zero_total",
-            "abs_error", "passed_timestep"]
+            "abs_error", "passed_timestep"] + children
     return pivot[keep]
 
 
