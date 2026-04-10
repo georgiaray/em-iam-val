@@ -72,8 +72,9 @@ REPO_ROOT = Path(_ml_iam_root)
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from li_generated_adapter import load_generated_data        # noqa: E402
-from li_ground_truth_adapter import load_li_ground_truth    # noqa: E402
+from li_generated_adapter import load_generated_data   # noqa: E402
+from ling_adapter import load_ling_data                # noqa: E402
+from inter_variable_r2 import run_inter_variable_r2   # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +292,8 @@ def main():
     parser.add_argument("--no-bounds",      action="store_true")
     parser.add_argument("--no-groundtruth", action="store_true",
                         help="Skip the ground truth reference pass")
+    parser.add_argument("--no-inter-r2",    action="store_true",
+                        help="Skip the inter-variable R² check (generated vs AR6)")
     parser.add_argument("--report",         action="store_true",
                         help="Generate a validation report after checks complete")
     args = parser.parse_args()
@@ -390,6 +393,34 @@ def main():
         print("  [WARNING] Could not export long-format predictions:")
         traceback.print_exc()
         results["export_predictions"] = False
+
+    # ── Inter-variable R² check (generated vs AR6) ──────────────────────────
+    if not args.no_inter_r2:
+        print(f"\n{'='*60}")
+        print("  INTER-VARIABLE R² CHECK")
+        print(f"{'='*60}")
+        try:
+            gt_data, gt_values, gt_targets = load_ling_data(
+                ling_path=args.ling_path,
+                verbose=False,
+            )
+            out_dir = REPO_ROOT / "results" / "xgb" / args.run_id / "inter_variable_r2"
+            results["inter_variable_r2"] = run_inter_variable_r2(
+                pred_data=pred_data,
+                pred_values=pred_values,
+                pred_targets=pred_targets,
+                gt_data=gt_data,
+                gt_values=gt_values,
+                gt_targets=gt_targets,
+                run_id=args.run_id,
+                out_dir=out_dir,
+                label_pred=f"Li {args.model.upper()} generated",
+                label_gt="AR6 ground truth (Ling)",
+            )
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            results["inter_variable_r2"] = False
 
     # ── Summary ──────────────────────────────────────────────────────────────
     print(f"\n{'='*60}")

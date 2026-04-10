@@ -23,6 +23,7 @@ Available flags:
     --no-regional         Skip the regional consistency check
     --no-bounds           Skip the bounds check
     --no-groundtruth      Skip the ground truth reference runs (run_groundtruth.py)
+    --no-inter-r2         Skip the inter-variable R² check
     --report              Generate a validation report after all checks complete
 
 Notes:
@@ -120,6 +121,8 @@ def main():
     parser.add_argument("--no-bounds",        action="store_true", help="Skip bounds check")
     parser.add_argument("--no-groundtruth",   action="store_true",
                         help="Skip ground truth reference runs (skips run_groundtruth.py)")
+    parser.add_argument("--no-inter-r2",      action="store_true",
+                        help="Skip the inter-variable R² check")
     parser.add_argument("--report",           action="store_true",
                         help="Generate a validation report after all checks complete")
     args = parser.parse_args()
@@ -198,11 +201,12 @@ def main():
             "run_groundtruth", "Ground truth reference runs", gt_argv
         )
 
-    # --- Export predictions in long format (needed for correlation analysis) ---
-    results["export_predictions"] = run_check(
-        "export_predictions", "Predictions export (long format)",
-        ["--run_id", args.run_id]
-    )
+    # --- Inter-variable R² check ---
+    if not args.no_inter_r2:
+        results["inter_variable_r2"] = run_check(
+            "inter_variable_r2", "Inter-variable R² check",
+            ["--run_id", args.run_id, "--top_n", "20"],
+        )
 
     # --- Optional report ---
     if args.report:
