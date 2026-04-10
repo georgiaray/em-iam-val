@@ -41,9 +41,16 @@ Usage
 Results are written to:
     ml-iam/results/xgb/<run_id>/<check_name>/               (generated outputs)
     ml-iam/results/xgb/<run_id>/<check_name>_ground_truth/  (AR6 ground truth)
+    ml-iam/results/xgb/<run_id>/predictions/                (long-format export
+                                                             for correlation analysis)
 
 Reports are written to:
     em-iam-val/reports/<run_id>/report.md
+
+Notes:
+    After all checks, generated scenarios and AR6 ground truth are exported
+    in long (tidy) format to results/xgb/<run_id>/predictions/ for use by
+    the inter-variable correlation section of the report (section 5).
 """
 
 import argparse
@@ -65,12 +72,12 @@ REPO_ROOT = Path(_ml_iam_root)
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from li_generated_adapter import load_generated_data   # noqa: E402
-from ling_adapter import load_ling_data                # noqa: E402
+from li_generated_adapter import load_generated_data        # noqa: E402
+from li_ground_truth_adapter import load_li_ground_truth    # noqa: E402
 
 
 # ---------------------------------------------------------------------------
-# Helpers (shared with run_ling_groundtruth.py)
+# Helpers (shared with run_li_groundtruth.py)
 # ---------------------------------------------------------------------------
 
 class _Tee:
@@ -268,7 +275,7 @@ def main():
                         help="Run identifier, e.g. li_vae_01")
     parser.add_argument("--model",   required=True, choices=["vae", "cgan", "rcgan"],
                         help="Which Li et al. model outputs to validate")
-    parser.add_argument("--ling_path",   default=None,
+    parser.add_argument("--li_path",     default=None,
                         help="Path to Li et al. ground truth CSV folder (default: auto)")
     parser.add_argument("--data_path",   default=None,
                         help="Path to gen_data_<model>.npy (default: auto)")
@@ -345,11 +352,44 @@ def main():
         if args.no_bounds:       gt_argv.append("--no-bounds")
         if args.no_empirical:    gt_argv.append("--no_empirical")
         if args.by_category:     gt_argv.append("--by_category")
-        if args.ling_path:       gt_argv += ["--ling_path", args.ling_path]
+        if args.li_path:         gt_argv += ["--li_path", args.li_path]
 
         results["ground_truth"] = _run_check(
-            "run_ling_groundtruth", "Ground truth reference pass", gt_argv
+            "run_li_groundtruth", "Ground truth reference pass", gt_argv
         )
+
+    # ── Export predictions in long format (for correlation analysis) ─────────
+    print(f"\n{'#'*60}")
+    print("  Exporting generated scenarios in long format")
+    print(f"{'#'*60}")
+    try:
+        from sum_check import build_long
+        from li_ground_truth_adapter import load_li_ground_truth
+
+        pred_long = build_long(pred_data, pred_values, pred_targets, "predictions")
+        out_dir = REPO_ROOT / "results" / "xgb" / args.run_id / "predictions"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        pred_long.to_csv(out_dir / "predictions_long.csv", index=False)
+        print(f"  Saved predictions_long.csv  ({len(pred_long):,} rows)")
+
+        # Ground truth: load AR6 data filtered to same variables as generated outputs
+        gt_data, gt_values, gt_targets = load_li_ground_truth(
+            li_path=args.li_path if hasattr(args, "li_path") else None,
+            variables=pred_targets,
+            verbose=False,
+        )
+        # Align to same targets as predictions
+        import numpy as np
+        target_idx = [gt_targets.index(t) for t in pred_targets if t in gt_targets]
+        aligned_targets = [gt_targets[i] for i in target_idx]
+        gt_long = build_long(gt_data, gt_values[:, target_idx], aligned_targets, "ground_truth")
+        gt_long.to_csv(out_dir / "groundtruth_long.csv", index=False)
+        print(f"  Saved groundtruth_long.csv  ({len(gt_long):,} rows)")
+        results["export_predictions"] = True
+    except Exception:
+        print("  [WARNING] Could not export long-format predictions:")
+        traceback.print_exc()
+        results["export_predictions"] = False
 
     # ── Summary ──────────────────────────────────────────────────────────────
     print(f"\n{'='*60}")

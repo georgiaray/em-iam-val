@@ -1,7 +1,7 @@
 """
-Ground truth validation runner for the Ling et al. (Deep-IAM) dataset.
+Ground truth validation runner for the Li et al. (Deep-IAM) dataset.
 
-Loads the Ling et al. AR6 scenario CSVs via ling_adapter.py, reshapes them
+Loads the Li et al. AR6 scenario CSVs via li_ground_truth_adapter.py, reshapes them
 into the em-iam-val canonical format, and runs the applicable validation checks
 directly — bypassing the RunStore / ml-iam pipeline used by run_groundtruth.py.
 
@@ -13,29 +13,27 @@ Applicable checks
 
 Not applicable
 --------------
-  regional_consistency  Ling data is World-level only; no subregional breakdown.
+  regional_consistency  Li et al. data is World-level only; no subregional breakdown.
 
-⚠ Timestep note
-----------------
-Ling data uses 10-year timesteps (2010, 2020, ..., 2100). The plausibility check
-normally computes 5-year period-on-period growth rates (because ml-iam data is
-annual). Here it computes 10-year growth rates instead. This is a methodological
-difference that should be noted when comparing Ling results against ml-iam results.
+Timestep note
+-------------
+Li et al. data uses 10-year timesteps (2010, 2020, ..., 2100). The plausibility
+check normally computes 5-year period-on-period growth rates (because ml-iam data
+is annual). Here it computes 10-year growth rates instead. This is a methodological
+difference that should be noted when comparing Li results against Shin results.
 
 Usage
 -----
-    python scripts/run_ling_groundtruth.py --run_id ling_01
-    python scripts/run_ling_groundtruth.py --run_id ling_01 --ling_path /path/to/Ling_emulation/Policy-Generative\ Model
-    python scripts/run_ling_groundtruth.py --run_id ling_01 --no-plausibility
-    python scripts/run_ling_groundtruth.py --run_id ling_01 --report
+    python scripts/run_li_groundtruth.py --run_id li_gt_01
+    python scripts/run_li_groundtruth.py --run_id li_gt_01 --li_path /path/to/Li-emulation/Policy-Generative\ Model
+    python scripts/run_li_groundtruth.py --run_id li_gt_01 --no-plausibility
+    python scripts/run_li_groundtruth.py --run_id li_gt_01 --report
 
 Results are written to:
     ml-iam/results/xgb/<run_id>/<check_name>_ground_truth/
 
-The run_id is prefixed with "ling_" by convention (e.g. ling_01) so Ling
-results are clearly separated from ml-iam XGBoost runs in the results directory.
 The report can then be generated with:
-    python scripts/make_val_report.py --run_id ling_01
+    python scripts/make_val_report.py --run_id li_gt_01
 """
 
 import argparse
@@ -61,7 +59,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # scripts/ for sibling
 # (module-level code in each check just sets REPO_ROOT / sys.path — safe to import)
 # ---------------------------------------------------------------------------
 
-from ling_adapter import load_ling_data          # noqa: E402
+from li_ground_truth_adapter import load_li_ground_truth          # noqa: E402
 
 # Lazy imports inside run_* functions so failures are reported per-check
 # rather than aborting everything.
@@ -102,7 +100,7 @@ def _out_dir(run_id: str, check_name: str) -> Path:
 # ---------------------------------------------------------------------------
 
 def run_plausibility(test_data, values, targets, run_id, percentile, by_category):
-    """Run the growth rate plausibility check against Ling ground truth."""
+    """Run the growth rate plausibility check against Li ground truth."""
     from check_plausibility import (
         build_trajectory_df,
         compute_growth_rates,
@@ -116,9 +114,9 @@ def run_plausibility(test_data, values, targets, run_id, percentile, by_category
 
     try:
         print("=" * 60)
-        print("  PLAUSIBILITY CHECK — Ling ground truth")
+        print("  PLAUSIBILITY CHECK — Li ground truth")
         print(f"  Run ID : {run_id}")
-        print("  NOTE   : 10-year timesteps (not 5-year as in ml-iam)")
+        print("  NOTE   : 10-year timesteps (not 5-year as in ml-iam/Shin)")
         print("=" * 60)
 
         lower_pct = percentile
@@ -173,7 +171,7 @@ def run_plausibility(test_data, values, targets, run_id, percentile, by_category
 
 
 def run_sum_check(test_data, values, targets, run_id, threshold, abs_floor):
-    """Run the hierarchy sum check against Ling ground truth."""
+    """Run the hierarchy sum check against Li ground truth."""
     from sum_check import discover_hierarchy, build_long, run_sum_check as _run, scenario_summary
 
     out_dir = _out_dir(run_id, "sum_check_ground_truth")
@@ -182,7 +180,7 @@ def run_sum_check(test_data, values, targets, run_id, threshold, abs_floor):
 
     try:
         print("=" * 60)
-        print("  SUM CHECK — Ling ground truth")
+        print("  SUM CHECK — Li ground truth")
         print(f"  Run ID    : {run_id}")
         print(f"  Threshold : {threshold:.1%}")
         print("=" * 60)
@@ -190,7 +188,7 @@ def run_sum_check(test_data, values, targets, run_id, threshold, abs_floor):
         hierarchy = discover_hierarchy(targets)
 
         if not hierarchy:
-            print("\n  No parent-child variable relationships found in Ling targets.")
+            print("\n  No parent-child variable relationships found in Li targets.")
             print("  This check requires at least one parent and one child variable")
             print("  (e.g. Secondary Energy|Electricity + Secondary Energy|Electricity|Solar).")
             return True
@@ -235,7 +233,7 @@ def run_sum_check(test_data, values, targets, run_id, threshold, abs_floor):
 
 
 def run_bounds(test_data, values, targets, run_id, percentile, use_empirical):
-    """Run the physical + empirical bounds check against Ling ground truth."""
+    """Run the physical + empirical bounds check against Li ground truth."""
     from bounds_check import (
         build_long,
         derive_empirical_bounds,
@@ -250,7 +248,7 @@ def run_bounds(test_data, values, targets, run_id, percentile, use_empirical):
 
     try:
         print("=" * 60)
-        print("  BOUNDS CHECK — Ling ground truth")
+        print("  BOUNDS CHECK — Li ground truth")
         print(f"  Run ID          : {run_id}")
         print(f"  Empirical bounds: {'yes' if use_empirical else 'no (physical only)'}")
         print("=" * 60)
@@ -301,17 +299,17 @@ def run_bounds(test_data, values, targets, run_id, percentile, use_empirical):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run em-iam-val ground truth checks on the Ling et al. dataset"
+        description="Run em-iam-val ground truth checks on the Li et al. dataset"
     )
     parser.add_argument(
         "--run_id", required=True,
-        help="Run identifier for output paths, e.g. ling_01"
+        help="Run identifier for output paths, e.g. li_gt_01"
     )
     parser.add_argument(
-        "--ling_path", default=None,
+        "--li_path", default=None,
         help=(
-            "Path to the Ling CSV folder "
-            "(default: coding/Ling_emulation/Policy-Generative Model)"
+            "Path to the Li et al. ground truth CSV folder "
+            "(default: coding/Li-emulation/Policy-Generative Model)"
         )
     )
     parser.add_argument(
@@ -354,13 +352,13 @@ def main():
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
-    print(f"  LING GROUND TRUTH VALIDATION")
+    print(f"  LI GROUND TRUTH VALIDATION")
     print(f"  Run ID : {args.run_id}")
     print(f"{'='*60}")
 
     # Load data once, reuse across checks
-    test_data, values, targets = load_ling_data(
-        ling_path=args.ling_path,
+    test_data, values, targets = load_li_ground_truth(
+        li_path=args.li_path,
         drop_failed_vetting=args.drop_failed_vetting,
     )
 
@@ -401,7 +399,7 @@ def main():
 
     # Summary
     print(f"\n{'='*60}")
-    print("  LING VALIDATION SUMMARY")
+    print("  LI GROUND TRUTH VALIDATION SUMMARY")
     print(f"{'='*60}")
     all_passed = True
     for name, passed in results.items():

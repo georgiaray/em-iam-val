@@ -40,6 +40,19 @@ if not _ml_iam_root:
 REPO_ROOT  = Path(_ml_iam_root)
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
+# Load units lookup from ml-iam configs (best-effort; falls back to empty dict)
+try:
+    sys.path.insert(0, str(REPO_ROOT))
+    from configs.data import UNITS_BY_OUTPUT as _UNITS_BY_OUTPUT
+except Exception:
+    _UNITS_BY_OUTPUT = {}
+
+
+def var_units(variable: str) -> str:
+    """Return the unit string for a variable, e.g. 'EJ/yr', or '' if unknown."""
+    return _UNITS_BY_OUTPUT.get(variable, "")
+
+
 # Consistent colour palette: predictions = blue, ground truth = orange
 C_PRED = "#2c7bb6"
 C_GT   = "#d7191c"
@@ -162,16 +175,18 @@ def _example_sum_failure(te_df: pd.DataFrame, sc_df: pd.DataFrame, label: str) -
         return f"_Could not locate timestep rows for example scenario in {label}._"
 
     # Build table: Year, then one column per child, then aggregates
+    units = var_units(parent)
+    units_suffix = f" ({units})" if units else ""
     tbl_dict = {"Year": rows_ts["Year"].values}
     # Use shortened child names (last segment after |) for readability
     for child in child_cols:
         if child in rows_ts.columns:
             short = child.split("|")[-1].strip()
             tbl_dict[short] = rows_ts[child].round(3).values
-    tbl_dict["Sum of children"] = rows_ts["sum_components"].round(3).values
-    tbl_dict["Parent value"]    = rows_ts["total"].round(3).values
-    tbl_dict["Difference"]      = (rows_ts["total"] - rows_ts["sum_components"]).round(3).values
-    tbl_dict["Error (%)"]       = (rows_ts["abs_error"] * 100).round(2).values
+    tbl_dict[f"Sum of children{units_suffix}"] = rows_ts["sum_components"].round(3).values
+    tbl_dict[f"Parent value{units_suffix}"]    = rows_ts["total"].round(3).values
+    tbl_dict["Difference"]                     = (rows_ts["total"] - rows_ts["sum_components"]).round(3).values
+    tbl_dict["Error (%)"]                      = (rows_ts["abs_error"] * 100).round(2).values
 
     tbl = pd.DataFrame(tbl_dict)
 
@@ -203,19 +218,22 @@ def _example_plausibility_failure(viol_df: pd.DataFrame, label: str) -> str:
         else "below lower bound"
     )
 
+    units = var_units(row["Variable"])
+    units_suffix = f" ({units})" if units else ""
     detail = pd.DataFrame([{
-        "Variable":       row["Variable"],
-        "Scenario":       row.get("Scenario", "—"),
-        "Region":         row.get("Region",   "—"),
-        "Category":       row.get("Scenario_Category", "—"),
-        "Year":           int(row["Year"]),
-        "Previous value": round(float(row["Value_lag5"]), 3),
-        "Current value":  round(float(row["Value"]),     3),
-        "Growth rate":    round(float(row["growth_rate"]), 4),
-        "Lower bound":    round(float(row["lower_bound"]), 4),
-        "Upper bound":    round(float(row["upper_bound"]), 4),
-        "Direction":      direction,
-        "Severity (bw)":  round(float(row["severity"]),   3),
+        "Variable":                  row["Variable"],
+        "Units":                     units,
+        "Scenario":                  row.get("Scenario", "—"),
+        "Region":                    row.get("Region",   "—"),
+        "Category":                  row.get("Scenario_Category", "—"),
+        "Year":                      int(row["Year"]),
+        f"Previous value{units_suffix}": round(float(row["Value_lag5"]), 3),
+        f"Current value{units_suffix}":  round(float(row["Value"]),     3),
+        "Growth rate":               round(float(row["growth_rate"]), 4),
+        "Lower bound":               round(float(row["lower_bound"]), 4),
+        "Upper bound":               round(float(row["upper_bound"]), 4),
+        "Direction":                 direction,
+        "Severity (bw)":             round(float(row["severity"]),   3),
     }])
 
     header = f"**Most severe violation** (severity = bound-widths outside the allowed range)"
@@ -257,17 +275,19 @@ def _example_bounds_failure(viol_df: pd.DataFrame, label: str) -> str:
         if row["_pct_dev"] > 0
         else "N/A (near-zero bound)"
     )
+    units = var_units(row["Variable"])
     detail = pd.DataFrame([{
         "Variable":      row["Variable"],
+        "Units":         units,
         "Scenario":      row.get("Scenario", "—"),
         "Region":        row.get("Region",   "—"),
         "Category":      row.get("Scenario_Category", "—"),
         "Year":          int(row["Year"]),
-        "Value":         round(float(row["Value"]),      3),
-        "Bound breached":round(float(bound_val),         3),
+        f"Value ({units})":         round(float(row["Value"]),      3),
+        f"Bound breached ({units})":round(float(bound_val),         3),
         "Direction":     direction,
-        "Lower bound":   round(float(row["lower_bound"]), 3) if pd.notna(row["lower_bound"]) else "—",
-        "Upper bound":   round(float(row["upper_bound"]), 3) if pd.notna(row["upper_bound"]) else "—",
+        f"Lower bound ({units})":   round(float(row["lower_bound"]), 3) if pd.notna(row["lower_bound"]) else "—",
+        f"Upper bound ({units})":   round(float(row["upper_bound"]), 3) if pd.notna(row["upper_bound"]) else "—",
         "Deviation (%)": dev_str,
     }])
 
@@ -349,6 +369,42 @@ def section_overview(
             "Predictions": f"{vr:.2f}%",
             "Ground Truth": gt_vr,
         })
+
+    # Inter-variable correlations (mean |Δr²| across years)
+    pred_path = results_base / "predictions" / "predictions_long.csv"
+    gt_path   = results_base / "predictions" / "groundtruth_long.csv"
+    if pred_path.exists() and gt_path.exists():
+        try:
+            pred_long = pd.read_csv(pred_path)
+            gt_long   = pd.read_csv(gt_path)
+            diffs = []
+            for year in [2030, 2050, 2100]:
+                def _cmat(df, y):
+                    sub = df[df["Year"] == y]
+                    if sub.empty:
+                        return None
+                    w = sub.pivot_table(
+                        index=["Model", "Scenario", "Region"],
+                        columns="Variable", values="Value", aggfunc="first"
+                    ).dropna(axis=1, how="all")
+                    return (w.corr(method="pearson") ** 2) if w.shape[1] >= 2 else None
+                pm = _cmat(pred_long, year)
+                gm = _cmat(gt_long,   year)
+                if pm is not None and gm is not None:
+                    common = [v for v in pm.columns if v in gm.columns]
+                    diff = (pm.loc[common, common] - gm.loc[common, common]).abs()
+                    mask = np.triu(np.ones(diff.shape, dtype=bool), k=1)
+                    diffs.append(diff.values[mask].mean())
+            if diffs:
+                mean_diff = np.mean(diffs)
+                rows.append({
+                    "Check": "Inter-variable Correlations",
+                    "Metric": "Mean |Δr²| vs ground truth",
+                    "Predictions": f"{mean_diff:.4f}",
+                    "Ground Truth": "0.0000 (reference)",
+                })
+        except Exception:
+            pass
 
     if not rows:
         return "_No check results found._"
@@ -749,13 +805,11 @@ def section_bounds(results_base: Path, fig_dir: Path) -> tuple[str, list]:
     # --- Bounds table ---
     if bounds is not None:
         tbl = bounds[["Variable", "lower_bound", "upper_bound"]].copy()
-        tbl.columns = ["Variable", "Lower bound", "Upper bound"]
-        tbl["Lower bound"] = tbl["Lower bound"].apply(
-            lambda x: f"{x:.4g}" if pd.notna(x) else "—"
-        )
-        tbl["Upper bound"] = tbl["Upper bound"].apply(
-            lambda x: f"{x:.4g}" if pd.notna(x) else "—"
-        )
+        tbl["Units"]       = tbl["Variable"].apply(var_units)
+        tbl["lower_bound"] = tbl["lower_bound"].apply(lambda x: f"{x:.4g}" if pd.notna(x) else "—")
+        tbl["upper_bound"] = tbl["upper_bound"].apply(lambda x: f"{x:.4g}" if pd.notna(x) else "—")
+        tbl.columns = ["Variable", "Lower bound", "Upper bound", "Units"]
+        tbl = tbl[["Variable", "Units", "Lower bound", "Upper bound"]]
         blocks.append("### Bounds Applied\n\n" + md_table(tbl, fmt={c: "{}" for c in tbl.columns}))
 
     # --- Figure: violation counts by variable (predictions) ---
@@ -856,6 +910,185 @@ def section_bounds(results_base: Path, fig_dir: Path) -> tuple[str, list]:
 
 
 # ---------------------------------------------------------------------------
+# Inter-variable correlations
+# ---------------------------------------------------------------------------
+
+def section_correlations(results_base: Path, fig_dir: Path) -> tuple[str, list]:
+    """
+    Pearson r² correlation matrices between all predicted variables at key
+    years (2030, 2050, 2100), compared side-by-side against AR6 ground truth.
+
+    Mirrors Li et al. (2025) Figure 4 panels c–h.  Applicable to any emulator
+    type: for supervised models (Shin) it shows whether the model preserves
+    inter-variable relationships in the test set; for generative models (Li)
+    it shows whether the generated distribution preserves them.
+
+    Requires export_predictions.py to have been run first (produces
+    predictions/predictions_long.csv and predictions/groundtruth_long.csv).
+    """
+    pred_path = results_base / "predictions" / "predictions_long.csv"
+    gt_path   = results_base / "predictions" / "groundtruth_long.csv"
+
+    if not pred_path.exists():
+        return (
+            "_Inter-variable correlation results not found. "
+            "Run `export_predictions.py` (or `run_all.py`) first._"
+        ), []
+
+    pred_long = pd.read_csv(pred_path)
+    gt_long   = pd.read_csv(gt_path) if gt_path.exists() else None
+
+    # Short variable labels for axis ticks (last segment after |)
+    all_vars = sorted(pred_long["Variable"].unique())
+    short_labels = {v: v.split("|")[-1].strip() for v in all_vars}
+
+    YEARS = [2030, 2050, 2100]
+    available_years = [y for y in YEARS if y in pred_long["Year"].values]
+    if not available_years:
+        return "_No data found at years 2030, 2050, or 2100._", []
+
+    figures = []
+    blocks  = []
+
+    blocks.append(
+        "Inter-variable Pearson r² matrices at years 2030, 2050, and 2100, "
+        "comparing model predictions against AR6 ground truth. "
+        "Values close to the ground truth indicate the emulator preserves "
+        "real-world variable relationships. "
+        "Methodology follows Li et al. (2025) Fig. 4."
+    )
+
+    def _corr_matrix(long_df: pd.DataFrame, year: int) -> pd.DataFrame | None:
+        sub = long_df[long_df["Year"] == year]
+        if sub.empty:
+            return None
+        wide = sub.pivot_table(
+            index=["Model", "Scenario", "Region"],
+            columns="Variable",
+            values="Value",
+            aggfunc="first",
+        )
+        # Keep only variables present for this year
+        wide = wide.dropna(axis=1, how="all")
+        if wide.shape[1] < 2:
+            return None
+        return wide.corr(method="pearson") ** 2  # r²
+
+    def _plot_corr(ax, mat: pd.DataFrame, title: str, vmin=0, vmax=1):
+        labels = [short_labels.get(v, v) for v in mat.columns]
+        im = ax.imshow(mat.values, vmin=vmin, vmax=vmax,
+                       cmap="RdYlGn", aspect="auto")
+        ax.set_xticks(range(len(labels)))
+        ax.set_yticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+        ax.set_yticklabels(labels, fontsize=7)
+        ax.set_title(title, fontsize=10, fontweight="bold", pad=6)
+        # Annotate cells
+        for i in range(len(labels)):
+            for j in range(len(labels)):
+                val = mat.values[i, j]
+                if not np.isnan(val):
+                    ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                            fontsize=5.5,
+                            color="black" if 0.2 < val < 0.8 else "white")
+        return im
+
+    for year in available_years:
+        pred_mat = _corr_matrix(pred_long, year)
+        gt_mat   = _corr_matrix(gt_long,   year) if gt_long is not None else None
+
+        if pred_mat is None:
+            continue
+
+        n_panels = 3 if gt_mat is not None else 1
+        fig, axes = plt.subplots(1, n_panels,
+                                 figsize=(5 * n_panels, max(4, len(pred_mat) * 0.55)))
+        if n_panels == 1:
+            axes = [axes]
+
+        im = _plot_corr(axes[0], pred_mat, f"Predictions — {year}")
+
+        if gt_mat is not None:
+            # Align columns/rows to predictions matrix
+            common = [v for v in pred_mat.columns if v in gt_mat.columns]
+            gt_aligned = gt_mat.loc[common, common]
+            pred_aligned = pred_mat.loc[common, common]
+
+            _plot_corr(axes[1], gt_aligned, f"AR6 Ground Truth — {year}")
+
+            # Difference: predictions r² minus ground truth r² (signed)
+            diff = pred_aligned.values - gt_aligned.values
+            diff_df = pd.DataFrame(diff, index=common, columns=common)
+            labels_common = [short_labels.get(v, v) for v in common]
+
+            ax = axes[2]
+            im2 = ax.imshow(diff_df.values, vmin=-1, vmax=1,
+                            cmap="RdBu_r", aspect="auto")
+            ax.set_xticks(range(len(labels_common)))
+            ax.set_yticks(range(len(labels_common)))
+            ax.set_xticklabels(labels_common, rotation=45, ha="right", fontsize=7)
+            ax.set_yticklabels(labels_common, fontsize=7)
+            ax.set_title(f"Difference (Pred − GT) — {year}",
+                         fontsize=10, fontweight="bold", pad=6)
+            for i in range(len(labels_common)):
+                for j in range(len(labels_common)):
+                    val = diff_df.values[i, j]
+                    if not np.isnan(val):
+                        ax.text(j, i, f"{val:+.2f}", ha="center", va="center",
+                                fontsize=5.5, color="black")
+            fig.colorbar(im2, ax=axes[2], fraction=0.046, pad=0.04)
+
+        fig.colorbar(im, ax=axes[0] if n_panels == 1 else axes[1],
+                     fraction=0.046, pad=0.04)
+        fig.suptitle(f"Inter-variable Pearson r² — {year}", fontsize=12,
+                     fontweight="bold", y=1.02)
+        fig.tight_layout()
+
+        fname = f"correlations_{year}"
+        rel = save_fig(fig, fig_dir, fname)
+        figures.append(rel)
+        blocks.append(
+            f"### {year}\n\n"
+            + (
+                "_Left: predictions. Centre: AR6 ground truth. "
+                "Right: difference (blue = predictions underestimate correlation, "
+                "red = overestimate)._\n\n"
+                if gt_mat is not None
+                else "_Predictions correlation matrix (no ground truth available)._\n\n"
+            )
+            + f"![Inter-variable correlations {year}]({rel})"
+        )
+
+    # --- Summary table: mean absolute difference per variable pair ---
+    if gt_long is not None and available_years:
+        rows = []
+        for year in available_years:
+            pred_mat = _corr_matrix(pred_long, year)
+            gt_mat   = _corr_matrix(gt_long,   year)
+            if pred_mat is None or gt_mat is None:
+                continue
+            common = [v for v in pred_mat.columns if v in gt_mat.columns]
+            diff = (pred_mat.loc[common, common] - gt_mat.loc[common, common]).abs()
+            # Upper triangle only (exclude diagonal)
+            mask = np.triu(np.ones(diff.shape, dtype=bool), k=1)
+            mean_abs_diff = diff.values[mask].mean()
+            rows.append({"Year": year,
+                         "Mean |Δr²| (off-diagonal)": f"{mean_abs_diff:.4f}"})
+        if rows:
+            tbl = pd.DataFrame(rows)
+            blocks.append(
+                "### Summary: Mean Absolute Difference in r²\n\n"
+                "_Average absolute difference between predictions and ground truth "
+                "correlation matrices (off-diagonal pairs only). "
+                "Lower is better — 0 would mean perfect preservation of "
+                "inter-variable relationships._\n\n"
+                + md_table(tbl, fmt={c: "{}" for c in tbl.columns})
+            )
+
+    return "\n\n".join(blocks), figures
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -914,7 +1147,10 @@ def main():
     print("  Generating bounds check section...")
     bc_body, bc_figs = section_bounds(results_base, fig_dir)
 
-    all_figs = sc_figs + pl_figs + rc_figs + bc_figs
+    print("  Generating inter-variable correlations section...")
+    co_body, co_figs = section_correlations(results_base, fig_dir)
+
+    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs
     print(f"  Figures generated: {len(all_figs)}")
 
     # --- Assemble report ---
@@ -970,6 +1206,17 @@ _Checks predicted values against hard physical lower bounds (energy variables �
 and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 {bc_body}
+
+---
+
+## 5. Inter-variable Correlations
+
+_Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
+predictions against AR6 ground truth. A well-calibrated emulator should preserve
+the correlations present in real IAM data (e.g. coal consumption and GHG emissions
+should remain positively correlated). Methodology follows Li et al. (2025) Fig. 4._
+
+{co_body}
 """
 
     out_path = report_dir / "report.md"

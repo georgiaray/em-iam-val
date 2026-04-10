@@ -1,7 +1,7 @@
 # Li et al. Validation — VAE (li_vae_01)
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-04-10 11:14
+**Generated:** 2026-04-10 15:11
 **Results path:** `results/xgb/li_vae_01/`
 
 ---
@@ -14,6 +14,7 @@
 |  | Mean relative error | 1979.419% | 26.303% |
 | Growth Rate Plausibility | Timestep violation rate | 2.0% | 1.9% |
 | Physical Bounds Check | Timestep violation rate | 2.00% | 1.72% |
+| Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.1370 | 0.0000 (reference) |
 
 ---
 
@@ -58,7 +59,7 @@ _The median failing scenario (by mean error) is shown below to illustrate a typi
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 1456.81%  (median failing scenario)
 
-| Year | Nuclear | Hydro | Oil | Coal | Gas | Wind | Solar | Biomass | Geothermal | Sum of children | Parent value | Difference | Error (%) |
+| Year | Nuclear | Hydro | Oil | Coal | Gas | Wind | Solar | Biomass | Geothermal | Sum of children (EJ/yr) | Parent value (EJ/yr) | Difference | Error (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2020.0 | 8.75 | 2.029 | 6.095 | 15.349 | 0.204 | 24.644 | 34.627 | 1.252 | 94.963 | 187.912 | 2.525 | -185.387 | 7341.11 |
 | 2030.0 | 11.327 | 0.377 | 15.476 | 17.885 | 0.353 | 37.848 | 17.015 | 1.661 | 112.034 | 213.977 | 9.094 | -204.883 | 2252.97 |
@@ -152,17 +153,17 @@ _The most severe violation (highest severity in bound-widths) is shown below._
 
 **Most severe violation** (severity = bound-widths outside the allowed range)
 
-| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Emissions\|Kyoto Gases | gen_00821 | World | C1234 | 2100 | 0.041 | -2004.938 | -48883.2857 | -2.973 | 0.2174 | below lower bound | 15321.179 |
+| Variable | Units | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Emissions\|Kyoto Gases |  | gen_00821 | World | C1234 | 2100 | 0.041 | -2004.938 | -48883.2857 | -2.973 | 0.2174 | below lower bound | 15321.179 |
 
 #### Example violation — ground truth
 
 **Most severe violation** (severity = bound-widths outside the allowed range)
 
-| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity | EN_NPi2020_800 | World | C3 | 2020 | 0.0 | 0.05 | 82458089.2752 | -0.0252 | 0.5641 | above upper bound | 139918689.859 |
+| Variable | Units | Scenario | Region | Category | Year | Previous value (EJ/yr) | Current value (EJ/yr) | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity | EJ/yr | EN_NPi2020_800 | World | C3 | 2020 | 0.0 | 0.05 | 82458089.2752 | -0.0252 | 0.5641 | above upper bound | 139918689.859 |
 
 ---
 
@@ -188,24 +189,24 @@ and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 ### Bounds Applied
 
-| Variable | Lower bound | Upper bound |
-| --- | --- | --- |
-| Carbon Sequestration\|CCS | 3.378 | 2.733e+04 |
-| Final Energy\|Liquids | 42.26 | 327.5 |
-| Primary Energy\|Gas | 0.6339 | 492.3 |
-| Primary Energy\|Oil | 31.26 | 367.1 |
-| Primary Energy\|Coal | 5.235 | 311.5 |
-| Secondary Energy\|Electricity\|Nuclear | 1.532 | 129.6 |
-| Secondary Energy\|Electricity\|Hydro | 7.815e-05 | 8.625 |
-| Secondary Energy\|Electricity | 1.436 | 331.6 |
-| Secondary Energy\|Electricity\|Oil | 4.761 | 232.8 |
-| Secondary Energy\|Electricity\|Coal | 12.26 | 54.3 |
-| Secondary Energy\|Electricity\|Gas | 0.02859 | 6.425 |
-| Secondary Energy\|Electricity\|Wind | 0.5396 | 121 |
-| Secondary Energy\|Electricity\|Solar | 0.008665 | 102.8 |
-| Secondary Energy\|Electricity\|Biomass | 0.1094 | 48.41 |
-| Secondary Energy\|Electricity\|Geothermal | 94.1 | 595.8 |
-| Emissions\|Kyoto Gases | -8461 | 1.052e+05 |
+| Variable | Units | Lower bound | Upper bound |
+| --- | --- | --- | --- |
+| Carbon Sequestration\|CCS |  | 3.378 | 2.733e+04 |
+| Final Energy\|Liquids |  | 42.26 | 327.5 |
+| Primary Energy\|Gas | PJ/yr | 0.6339 | 492.3 |
+| Primary Energy\|Oil | PJ/yr | 31.26 | 367.1 |
+| Primary Energy\|Coal | PJ/yr | 5.235 | 311.5 |
+| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 1.532 | 129.6 |
+| Secondary Energy\|Electricity\|Hydro | EJ/yr | 7.815e-05 | 8.625 |
+| Secondary Energy\|Electricity | EJ/yr | 1.436 | 331.6 |
+| Secondary Energy\|Electricity\|Oil | EJ/yr | 4.761 | 232.8 |
+| Secondary Energy\|Electricity\|Coal | EJ/yr | 12.26 | 54.3 |
+| Secondary Energy\|Electricity\|Gas | EJ/yr | 0.02859 | 6.425 |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.5396 | 121 |
+| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.008665 | 102.8 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | 0.1094 | 48.41 |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 94.1 | 595.8 |
+| Emissions\|Kyoto Gases |  | -8461 | 1.052e+05 |
 
 ### Violations by Variable
 
@@ -232,14 +233,53 @@ _The most extreme violation (largest % deviation from the breached bound) is sho
 
 **Most extreme violation** (largest % deviation from the breached bound)
 
-| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Wind | gen_07202 | World | C1234 | 2090 | 0.0 | 0.54 | below lower bound | 0.54 | 121.042 | 100.00 |
+| Variable | Units | Scenario | Region | Category | Year | Value (EJ/yr) | Bound breached (EJ/yr) | Direction | Lower bound (EJ/yr) | Upper bound (EJ/yr) | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | gen_07202 | World | C1234 | 2090 | 0.0 | 0.54 | below lower bound | 0.54 | 121.042 | 100.00 |
 
 #### Example violation — ground truth
 
 **Most extreme violation** (largest % deviation from the breached bound)
 
-| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Primary Energy\|Oil | EN_INDCi2030_1000 | World | C3 | 2010 | 1302.528 | 361.722 | above upper bound | 1.544 | 361.722 | 260.09 |
+| Variable | Units | Scenario | Region | Category | Year | Value (PJ/yr) | Bound breached (PJ/yr) | Direction | Lower bound (PJ/yr) | Upper bound (PJ/yr) | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Primary Energy\|Oil | PJ/yr | EN_INDCi2030_1000 | World | C3 | 2010 | 1302.528 | 361.722 | above upper bound | 1.544 | 361.722 | 260.09 |
+
+---
+
+## 5. Inter-variable Correlations
+
+_Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
+predictions against AR6 ground truth. A well-calibrated emulator should preserve
+the correlations present in real IAM data (e.g. coal consumption and GHG emissions
+should remain positively correlated). Methodology follows Li et al. (2025) Fig. 4._
+
+Inter-variable Pearson r² matrices at years 2030, 2050, and 2100, comparing model predictions against AR6 ground truth. Values close to the ground truth indicate the emulator preserves real-world variable relationships. Methodology follows Li et al. (2025) Fig. 4.
+
+### 2030
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
+![Inter-variable correlations 2030](figures/correlations_2030.png)
+
+### 2050
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
+![Inter-variable correlations 2050](figures/correlations_2050.png)
+
+### 2100
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
+![Inter-variable correlations 2100](figures/correlations_2100.png)
+
+### Summary: Mean Absolute Difference in r²
+
+_Average absolute difference between predictions and ground truth correlation matrices (off-diagonal pairs only). Lower is better — 0 would mean perfect preservation of inter-variable relationships._
+
+| Year | Mean \|Δr²\| (off-diagonal) |
+| --- | --- |
+| 2030 | 0.1437 |
+| 2050 | 0.1449 |
+| 2100 | 0.1223 |

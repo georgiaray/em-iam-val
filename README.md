@@ -5,7 +5,7 @@ A modular, study-agnostic validation framework for assessing the physical plausi
 This framework is developed as part of a research project establishing validation standards for the emerging field of IAM emulation — the use of machine learning to reproduce or generate IAM scenario outputs. It is designed to be applicable across different emulation approaches and has been applied to two published emulation studies:
 
 - **[ML-IAM v1.0](https://egusphere.copernicus.org/preprints/2026/egusphere-2025-5305/)** (Shin et al., 2026) — XGBoost-based supervised regression emulator
-- **[Deep-IAM](https://zenodo.org/)** (Ling et al.) — generative deep learning emulator (VAE / CGAN / RCGAN)
+- **[Deep-IAM](https://zenodo.org/)** (Li et al.) — generative deep learning emulator (VAE / CGAN / RCGAN)
 
 ---
 
@@ -36,6 +36,8 @@ You will also need to have completed at least one training run in ml-iam so that
 
 ## Installation
 
+Everything runs inside a single Poetry environment. No separate conda or virtual environment is needed.
+
 ```bash
 cd em-iam-val
 poetry install
@@ -45,6 +47,8 @@ poetry shell
 ---
 
 ## Usage
+
+### Shin et al. (ML-IAM / XGBoost)
 
 Run all checks for a completed ml-iam run and generate a report:
 
@@ -75,6 +79,30 @@ python scripts/run_all.py --run_id xgb_04
 python scripts/run_groundtruth.py --run_id xgb_04
 python scripts/make_val_report.py --run_id xgb_04
 ```
+
+### Li et al. (Deep-IAM / generative)
+
+Run the full validation suite (generated outputs + ground truth reference + report):
+
+```bash
+python scripts/run_li_all.py --run_id li_vae_01 --model vae --report
+python scripts/run_li_all.py --run_id li_cgan_01 --model cgan --report
+python scripts/run_li_all.py --run_id li_rcgan_01 --model rcgan --report
+```
+
+Run only the ground truth reference pass:
+
+```bash
+python scripts/run_li_groundtruth.py --run_id li_gt_01 --report
+```
+
+If the Li et al. data is not in the default location (`../Li-emulation/Policy-Generative Model`), pass the path explicitly:
+
+```bash
+python scripts/run_li_all.py --run_id li_vae_01 --model vae --li_path /path/to/Li-emulation/Policy-Generative\ Model
+```
+
+**Note on applicable checks:** The Li et al. dataset is World-level only, so `regional_consistency` does not apply and is not run. Growth-rate checks use 10-year timesteps rather than the 5-year timesteps used for Shin. These differences are flagged in the report.
 
 Reports are written to `reports/<run_id>/report.md`. Check result CSVs are written to `ml-iam/results/xgb/<run_id>/` alongside the model artifacts they describe.
 
@@ -206,6 +234,21 @@ Checks predicted values against hard physical bounds and, optionally, empirical 
 
 ---
 
+### `export_predictions.py` — Predictions Export
+
+**What it does:**
+Exports model predictions and AR6 ground truth in long (tidy) format as CSVs. Called automatically by `run_all.py` after all checks complete. Can also be run standalone.
+
+The exported CSVs have columns: `Model, Scenario, Region, Scenario_Category, Year, Variable, Value`.
+
+**Required data:** A completed ml-iam run with cached predictions and processed data.
+
+**Outputs** (`ml-iam/results/xgb/<run_id>/predictions/`):
+- `predictions_long.csv`
+- `groundtruth_long.csv`
+
+---
+
 ### `make_val_report.py` — Validation Report Generator
 
 **What it does:**
@@ -213,7 +256,15 @@ Reads the CSV outputs from all completed checks and generates a single Markdown 
 
 Must be run after `run_all.py` (or after whichever individual checks you want included). Missing check outputs are silently skipped.
 
-**Required data:** CSV outputs from the individual checks under `ml-iam/results/xgb/<run_id>/`.
+The report contains five sections:
+
+1. **Hierarchy Sum Check** — whether parent variables equal the sum of their children
+2. **Growth Rate Plausibility** — whether 5-year growth rates stay within AR6 bounds
+3. **Regional Consistency** — whether World values equal the sum of subregion values
+4. **Physical Bounds Check** — whether values stay within physical and empirical bounds
+5. **Inter-variable Correlations** — Pearson r² matrices at 2030, 2050, 2100, comparing predictions against AR6 ground truth (mirrors Li et al. 2025 Fig. 4)
+
+**Required data:** CSV outputs from the individual checks under `ml-iam/results/xgb/<run_id>/`, plus `predictions/predictions_long.csv` (from `export_predictions.py`) for section 5.
 
 **Key options:**
 

@@ -24,6 +24,11 @@ Available flags:
     --no-bounds           Skip the bounds check
     --no-groundtruth      Skip the ground truth reference runs (run_groundtruth.py)
     --report              Generate a validation report after all checks complete
+
+Notes:
+    After all checks, predictions and ground truth are always exported in long
+    (tidy) format to results/xgb/<run_id>/predictions/ via export_predictions.py.
+    These CSVs feed the inter-variable correlation section of the report.
 """
 
 import argparse
@@ -192,6 +197,12 @@ def main():
         results["run_groundtruth"] = run_check(
             "run_groundtruth", "Ground truth reference runs", gt_argv
         )
+
+    # --- Export predictions in long format (needed for correlation analysis) ---
+    results["export_predictions"] = run_check(
+        "export_predictions", "Predictions export (long format)",
+        ["--run_id", args.run_id]
+    )
 
     # --- Optional report ---
     if args.report:

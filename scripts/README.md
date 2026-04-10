@@ -1,14 +1,21 @@
 # EM-IAM Validation Framework
 
-Post-training validation checks for ML-IAM XGBoost predictions. This framework is study-agnostic and can validate any IAM-like XGBoost model trained with the ml-iam pipeline.
+Post-training validation checks for IAM emulation studies. This framework is study-agnostic and has been applied to two published emulation approaches:
+
+- **Shin et al. (ML-IAM)** — XGBoost supervised regression emulator
+- **Li et al. (Deep-IAM)** — generative deep learning emulator (VAE / CGAN / RCGAN)
+
+All scripts run within the `em-iam-val` Poetry environment. No separate conda or virtual environment is required.
 
 ## Setup
 
-This validation framework requires access to an ml-iam codebase to load model artifacts (predictions, scalers, etc.). By default, it looks for ml-iam in the adjacent directory (`../ml-iam`). If your ml-iam installation is elsewhere, set the environment variable before running:
+For Shin et al. runs, the framework requires access to an ml-iam installation to load model artifacts (predictions, scalers, etc.). By default it looks for ml-iam in the adjacent directory (`../ml-iam`). If your ml-iam installation is elsewhere, set:
 
 ```bash
 export ML_IAM_ROOT=/path/to/ml-iam
 ```
+
+For Li et al. runs, the framework reads predictions directly from `.npy` arrays and ground truth from CSV files in the Li-emulation folder. By default it expects `../Li-emulation/Policy-Generative Model`. Pass `--li_path` to override.
 
 ## Terminology
 
@@ -255,6 +262,27 @@ check. AR6 ground truth is required if `--no_empirical` is not set (loaded autom
 
 ---
 
+### `export_predictions.py` — Predictions Export
+
+**What it does:**
+Exports model predictions and AR6 ground truth in long (tidy) format as CSVs.
+Called automatically by `run_all.py` after all checks complete. Can also be run
+standalone:
+
+```bash
+python export_predictions.py --run_id xgb_04
+```
+
+The exported CSVs have columns: `Model, Scenario, Region, Scenario_Category, Year, Variable, Value`.
+
+**Required data:** A completed ml-iam run with cached predictions and processed data.
+
+**Outputs** (`results/xgb/<run_id>/predictions/`):
+- `predictions_long.csv`
+- `groundtruth_long.csv`
+
+---
+
 ### `make_val_report.py` — Validation Report Generator
 
 **What it does:**
@@ -263,18 +291,22 @@ report with summary tables and figures. Must be run after `run_all.py` (or after
 whichever individual checks you want included). Missing check outputs are silently
 skipped with a note in the relevant section.
 
-The report includes:
-- An overview table with pass rates and key metrics for all checks, side-by-side
-  predictions vs AR6 ground truth wherever ground truth results are available
-- One section per check with tables, figures, and prediction/ground truth comparisons
-- Figures: error distribution histograms, error-by-year line charts, violation rate
-  bar charts by variable, bounds violation breakdowns
+The report contains five sections:
 
-Ground truth comparisons are included automatically when ground truth check results
-exist (i.e. when the corresponding check was also run with `--use_ground_truth`).
+1. **Hierarchy Sum Check** — parent variables vs sum of children
+2. **Growth Rate Plausibility** — 5-year growth rates within AR6 empirical bounds
+3. **Regional Consistency** — World values vs sum of subregions
+4. **Physical Bounds Check** — values within physical and empirical bounds
+5. **Inter-variable Correlations** — Pearson r² matrices at 2030, 2050, 2100,
+   comparing predictions against AR6 ground truth. Mirrors Li et al. (2025)
+   Fig. 4 and is applicable to any emulator type (supervised or generative).
+
+Each section includes example failure tables and, where ground truth results
+exist, a side-by-side predictions vs ground truth comparison.
 
 **Required data:** CSV outputs from the individual checks under
-`results/xgb/<run_id>/`. At least one check must have been run.
+`results/xgb/<run_id>/`, plus `predictions/predictions_long.csv` (from
+`export_predictions.py`) for section 5.
 
 **Key options:**
 | Flag | Default | Description |
@@ -287,14 +319,65 @@ exist (i.e. when the corresponding check was also run with `--use_ground_truth`)
 
 ---
 
+## Li et al. specific scripts
+
+### `run_li_all.py` — Full Li et al. validation runner
+
+Runs all applicable checks against both generated model outputs and the AR6 ground truth, then optionally generates a report. Mirrors `run_all.py` for the Shin pipeline.
+
+```bash
+python run_li_all.py --run_id li_vae_01 --model vae --report
+python run_li_all.py --run_id li_cgan_01 --model cgan --report
+python run_li_all.py --run_id li_rcgan_01 --model rcgan --report
+```
+
+Checks run: plausibility, sum_check, bounds_check (predictions pass then ground truth pass). `regional_consistency` is not run — Li et al. data is World-level only.
+
+Key options: `--li_path`, `--data_path`, `--labels_path`, `--no-groundtruth`, `--report`.
+
+---
+
+### `run_li_groundtruth.py` — Li et al. ground truth runner
+
+Runs all applicable checks against the Li et al. AR6 ground truth CSVs only. Useful for establishing the baseline violation rate independently of any model outputs.
+
+```bash
+python run_li_groundtruth.py --run_id li_gt_01 --report
+python run_li_groundtruth.py --run_id li_gt_01 --li_path /path/to/Li-emulation/Policy-Generative\ Model
+```
+
+---
+
+### `li_ground_truth_adapter.py` — Li et al. ground truth data loader
+
+Loads the Li et al. AR6 scenario CSVs from the `Li-emulation/Policy-Generative Model` folder and reshapes them into the canonical `(test_data, values, targets)` format used by all checks.
+
+Import:
+```python
+from li_ground_truth_adapter import load_li_ground_truth
+test_data, values, targets = load_li_ground_truth(li_path=None)
+```
+
+### `li_generated_adapter.py` — Li et al. generated outputs loader
+
+Loads the `.npy` arrays produced by Li et al.'s trained generative models (VAE, CGAN, RCGAN) and reshapes them into the same canonical format.
+
+Import:
+```python
+from li_generated_adapter import load_generated_data
+test_data, values, targets = load_generated_data(model="vae")
+```
+
+---
+
 ## Study Agnostic Design
 
-This framework is decoupled from ml-iam and does not enforce study-specific assumptions. It only requires:
+This framework is decoupled from any specific emulation pipeline. It does not enforce study-specific assumptions. Each check requires only:
 
-1. A valid XGBoost run in ml-iam (with cached predictions, scalers, and processed data)
-2. The `ML_IAM_ROOT` environment variable or default `../ml-iam` directory to be set correctly
+1. Predictions and ground truth in the canonical `(test_data, values, targets)` format
+2. The `ML_IAM_ROOT` environment variable (or `../ml-iam` default) for Shin runs; `--li_path` for Li runs
 
-The framework is designed to work with any target variable set, regional/hierarchical structure, and threshold parameters. New checks can be added without modifying ml-iam.
+The framework works with any target variable set, regional/hierarchical structure, and threshold parameters. If a check cannot be run because a required data type is not available for a given study (e.g. no regional breakdown for Li), the check is simply not run — it is not counted as a failure.
 
 ---
 

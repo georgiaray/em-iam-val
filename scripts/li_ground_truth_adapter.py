@@ -1,7 +1,7 @@
 """
-Ling et al. data adapter for em-iam-val.
+Li et al. ground truth data adapter for em-iam-val.
 
-Loads the AR6 scenario CSVs from the Ling et al. (Deep-IAM) Zenodo deposit and
+Loads the AR6 scenario CSVs from the Li et al. (Deep-IAM) Zenodo deposit and
 reshapes them into the canonical format expected by the em-iam-val validation checks:
 
     test_data  : pd.DataFrame  — index columns [Model, Scenario, Region,
@@ -9,23 +9,23 @@ reshapes them into the canonical format expected by the em-iam-val validation ch
     values     : np.ndarray    — shape (n_rows, n_targets), float64
     targets    : list[str]     — IAMC variable names, length n_targets
 
-The Ling data is World-level only (no regional breakdown) and uses 10-year
-timesteps (2010–2100). Both of these differ from the ml-iam / AR6 pipeline:
+The Li ground truth data is World-level only (no regional breakdown) and uses
+10-year timesteps (2010–2100). Both of these differ from the ml-iam / AR6 pipeline:
   - Region is synthesised as "World" for every row.
   - Growth-rate checks will compute 10-year period-on-period rates, not 5-year.
     This is noted in the runner and should be flagged in any report.
 
 Usage
 -----
-    from ling_adapter import load_ling_data
+    from li_ground_truth_adapter import load_li_ground_truth
 
-    test_data, values, targets = load_ling_data()          # defaults
-    test_data, values, targets = load_ling_data(
-        ling_path="/path/to/Ling_emulation/Policy-Generative Model",
+    test_data, values, targets = load_li_ground_truth()          # defaults
+    test_data, values, targets = load_li_ground_truth(
+        li_path="/path/to/Li-emulation/Policy-Generative Model",
         drop_failed_vetting=True,
     )
 
-The default ling_path assumes the Li-emulation folder sits adjacent to the
+The default li_path assumes the Li-emulation folder sits adjacent to the
 em-iam-val and ml-iam repos, i.e.:
     coding/
         em-iam-val/
@@ -43,9 +43,9 @@ import pandas as pd
 # Default data path
 # ---------------------------------------------------------------------------
 
-# Assumes coding/Ling_emulation/Policy-Generative Model/ relative to this file
+# Assumes coding/Li-emulation/Policy-Generative Model/ relative to this file
 _HERE = Path(__file__).resolve().parent
-DEFAULT_LING_PATH = _HERE.parent.parent / "Li-emulation" / "Policy-Generative Model"
+DEFAULT_LI_PATH = _HERE.parent.parent / "Li-emulation" / "Policy-Generative Model"
 
 # ---------------------------------------------------------------------------
 # Variable map: CSV filename stem → IAMC variable name
@@ -95,7 +95,7 @@ EXTRA_VARIABLE_MAP: dict[str, str] = {
     "SecondaryEnergyElectricity_imputed":    "Secondary Energy|Electricity",
 }
 
-# Year columns present in all Ling CSVs
+# Year columns present in all Li ground truth CSVs
 YEAR_COLS: list[str] = [str(y) for y in range(2010, 2110, 10)]
 
 # Category values that indicate a scenario failed IAMC vetting and should
@@ -107,20 +107,20 @@ FAILED_VETTING_VALUES: set[str] = {"failed-vetting", "no-climate-assessment"}
 # Public API
 # ---------------------------------------------------------------------------
 
-def load_ling_data(
-    ling_path: str | Path | None = None,
+def load_li_ground_truth(
+    li_path: str | Path | None = None,
     drop_failed_vetting: bool = True,
     variables: list[str] | None = None,
     verbose: bool = True,
 ) -> tuple[pd.DataFrame, np.ndarray, list[str]]:
     """
-    Load and reshape Ling et al. CSV data into the em-iam-val canonical format.
+    Load and reshape Li et al. ground truth CSV data into the em-iam-val canonical format.
 
     Parameters
     ----------
-    ling_path : path-like, optional
-        Directory containing the Ling CSV files. Defaults to
-        ``coding/Ling_emulation/Policy-Generative Model/``.
+    li_path : path-like, optional
+        Directory containing the Li et al. ground truth CSV files. Defaults to
+        ``coding/Li-emulation/Policy-Generative Model/``.
         Pass the Feature-selection folder to get a wider variable set.
     drop_failed_vetting : bool
         If True (default), rows whose Category is "failed-vetting" or
@@ -141,12 +141,12 @@ def load_ling_data(
     targets : list[str]
         IAMC variable names corresponding to columns of ``values``.
     """
-    path = Path(ling_path) if ling_path is not None else DEFAULT_LING_PATH
+    path = Path(li_path) if li_path is not None else DEFAULT_LI_PATH
 
     if not path.exists():
         raise FileNotFoundError(
-            f"Ling data path not found: {path}\n"
-            f"Set ling_path explicitly or ensure Ling_emulation is at {DEFAULT_LING_PATH.parent}"
+            f"Li ground truth data path not found: {path}\n"
+            f"Set li_path explicitly or ensure Li-emulation is at {DEFAULT_LI_PATH.parent}"
         )
 
     # Build the combined variable map for this folder
@@ -156,7 +156,7 @@ def load_ling_data(
     found_vars: list[str] = []
 
     _log = print if verbose else lambda *a, **k: None
-    _log(f"\nLoading Ling data from: {path}")
+    _log(f"\nLoading Li ground truth data from: {path}")
 
     for stem, iamc_name in vmap.items():
         if variables is not None and iamc_name not in variables:
@@ -260,14 +260,14 @@ def load_ling_data(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Summarise available Ling data")
+    parser = argparse.ArgumentParser(description="Summarise available Li ground truth data")
     parser.add_argument(
-        "--ling_path", default=None,
-        help="Path to the Ling CSV folder (default: coding/Ling_emulation/Policy-Generative Model)"
+        "--li_path", default=None,
+        help="Path to the Li ground truth CSV folder (default: coding/Li-emulation/Policy-Generative Model)"
     )
     args = parser.parse_args()
 
-    td, vals, tgts = load_ling_data(ling_path=args.ling_path)
+    td, vals, tgts = load_li_ground_truth(li_path=args.li_path)
     print(f"test_data shape : {td.shape}")
     print(f"values shape    : {vals.shape}")
     print(f"targets         : {tgts}")

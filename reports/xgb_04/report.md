@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-04-10 11:13
+**Generated:** 2026-04-10 15:12
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -14,6 +14,7 @@
 |  | Mean relative error | 6.538% | 1.365% |
 | Growth Rate Plausibility | Timestep violation rate | 3.0% | 1.8% |
 | Physical Bounds Check | Timestep violation rate | 3.72% | 1.59% |
+| Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
 
 ---
 
@@ -58,7 +59,7 @@ _The median failing scenario (by mean error) is shown below to illustrate a typi
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 5.07%  (median failing scenario)
 
-| Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children | Parent value | Difference | Error (%) |
+| Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children (EJ/yr) | Parent value (EJ/yr) | Difference | Error (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2025.0 | 10.822 | 257.648 | 319.528 | 18.343 | 427.783 | 0.035 | 6.393 | 54.959 | 224.102 | 1319.613 | 1358.654 | 39.041 | 2.87 |
 | 2030.0 | 13.231 | 265.38 | 340.77 | 21.043 | 494.357 | 4.613 | 8.081 | 141.097 | 325.506 | 1614.078 | 1661.869 | 47.791 | 2.88 |
@@ -78,7 +79,7 @@ _The median failing scenario (by mean error) is shown below to illustrate a typi
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 2.62%  (median failing scenario)
 
-| Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children | Parent value | Difference | Error (%) |
+| Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children (EJ/yr) | Parent value (EJ/yr) | Difference | Error (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2015.0 | 324.1 | 4909.8 | 5872.0 | 98.0 | 1096.9 | 2640.7 | 278.1 | 136.4 | 730.4 | 16086.4 | 16086.5 | 0.1 | 0.0 |
 | 2020.0 | 316.9 | 4252.6 | 6742.9 | 112.0 | 1204.2 | 2007.0 | 189.9 | 417.4 | 1275.7 | 16518.6 | 16519.2 | 0.6 | 0.0 |
@@ -167,17 +168,17 @@ _The most severe violation (highest severity in bound-widths) is shown below._
 
 **Most severe violation** (severity = bound-widths outside the allowed range)
 
-| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Geothermal | EN_INDCi2030_1400_COV | R10INDIA+ | C4 | 2035 | -0.0 | 6.643 | 38613.9578 | -0.4082 | 15.342 | above upper bound | 2450.675 |
+| Variable | Units | Scenario | Region | Category | Year | Previous value (EJ/yr) | Current value (EJ/yr) | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | EN_INDCi2030_1400_COV | R10INDIA+ | C4 | 2035 | -0.0 | 6.643 | 38613.9578 | -0.4082 | 15.342 | above upper bound | 2450.675 |
 
 #### Example violation — ground truth
 
 **Most severe violation** (severity = bound-widths outside the allowed range)
 
-| Variable | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Wind | EN_INDCi2030_3000f | ETH | C6 | 2050 | -0.0 | 90.0 | 49478023249920.0 | -0.1557 | 9.0326 | above upper bound | 5384918554126.189 |
+| Variable | Units | Scenario | Region | Category | Year | Previous value (EJ/yr) | Current value (EJ/yr) | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | EN_INDCi2030_3000f | ETH | C6 | 2050 | -0.0 | 90.0 | 49478023249920.0 | -0.1557 | 9.0326 | above upper bound | 5384918554126.189 |
 
 ---
 
@@ -203,27 +204,27 @@ and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 ### Bounds Applied
 
-| Variable | Lower bound | Upper bound |
-| --- | --- | --- |
-| Primary Energy\|Coal | 0 | 1.885e+05 |
-| Primary Energy\|Gas | 22.05 | 2.006e+05 |
-| Primary Energy\|Oil | 0.2682 | 2.024e+05 |
-| Primary Energy\|Solar | 4.163 | 1.517e+05 |
-| Primary Energy\|Wind | 4.211 | 1.205e+05 |
-| Primary Energy\|Nuclear | 0 | 5.49e+04 |
-| Emissions\|CO2 | -4362 | 4.188e+04 |
-| Emissions\|CH4 | 0.4528 | 379 |
-| Emissions\|N2O | 16.78 | 1.291e+04 |
-| Secondary Energy\|Electricity | 666.4 | 3.737e+05 |
-| Secondary Energy\|Electricity\|Biomass | 0 | 2.043e+04 |
-| Secondary Energy\|Electricity\|Coal | 0 | 4.069e+04 |
-| Secondary Energy\|Electricity\|Gas | 0 | 3.94e+04 |
-| Secondary Energy\|Electricity\|Geothermal | 0 | 4205 |
-| Secondary Energy\|Electricity\|Hydro | 1.834 | 3.401e+04 |
-| Secondary Energy\|Electricity\|Nuclear | 0 | 5.185e+04 |
-| Secondary Energy\|Electricity\|Oil | 0 | 3919 |
-| Secondary Energy\|Electricity\|Solar | 3.7 | 1.292e+05 |
-| Secondary Energy\|Electricity\|Wind | 3.609 | 1.176e+05 |
+| Variable | Units | Lower bound | Upper bound |
+| --- | --- | --- | --- |
+| Primary Energy\|Coal | PJ/yr | 0 | 1.885e+05 |
+| Primary Energy\|Gas | PJ/yr | 22.05 | 2.006e+05 |
+| Primary Energy\|Oil | PJ/yr | 0.2682 | 2.024e+05 |
+| Primary Energy\|Solar | PJ/yr | 4.163 | 1.517e+05 |
+| Primary Energy\|Wind | PJ/yr | 4.211 | 1.205e+05 |
+| Primary Energy\|Nuclear | PJ/yr | 0 | 5.49e+04 |
+| Emissions\|CO2 | Mt CO2/yr | -4362 | 4.188e+04 |
+| Emissions\|CH4 | Mt CH4/yr | 0.4528 | 379 |
+| Emissions\|N2O | Mt N2O/yr | 16.78 | 1.291e+04 |
+| Secondary Energy\|Electricity | EJ/yr | 666.4 | 3.737e+05 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | 0 | 2.043e+04 |
+| Secondary Energy\|Electricity\|Coal | EJ/yr | 0 | 4.069e+04 |
+| Secondary Energy\|Electricity\|Gas | EJ/yr | 0 | 3.94e+04 |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 0 | 4205 |
+| Secondary Energy\|Electricity\|Hydro | EJ/yr | 1.834 | 3.401e+04 |
+| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 0 | 5.185e+04 |
+| Secondary Energy\|Electricity\|Oil | EJ/yr | 0 | 3919 |
+| Secondary Energy\|Electricity\|Solar | EJ/yr | 3.7 | 1.292e+05 |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | 3.609 | 1.176e+05 |
 
 ### Violations by Variable
 
@@ -250,14 +251,53 @@ _The most extreme violation (largest % deviation from the breached bound) is sho
 
 **Most extreme violation** (largest % deviation from the breached bound)
 
-| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Primary Energy\|Oil | DeepElec_SSP2_def_Budg900 | R10LATIN_AM | C1 | 2070 | -405.891 | 0.268 | below lower bound | 0.268 | 202427.081 | 151417.70 |
+| Variable | Units | Scenario | Region | Category | Year | Value (PJ/yr) | Bound breached (PJ/yr) | Direction | Lower bound (PJ/yr) | Upper bound (PJ/yr) | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Primary Energy\|Oil | PJ/yr | DeepElec_SSP2_def_Budg900 | R10LATIN_AM | C1 | 2070 | -405.891 | 0.268 | below lower bound | 0.268 | 202427.081 | 151417.70 |
 
 #### Example violation — ground truth
 
 **Most extreme violation** (largest % deviation from the breached bound)
 
-| Variable | Scenario | Region | Category | Year | Value | Bound breached | Direction | Lower bound | Upper bound | Deviation (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Primary Energy\|Oil | EN_NPi2020_300f | ZAF | C1 | 2100 | -129.975 | 0.268 | below lower bound | 0.268 | 202427.081 | 48555.28 |
+| Variable | Units | Scenario | Region | Category | Year | Value (PJ/yr) | Bound breached (PJ/yr) | Direction | Lower bound (PJ/yr) | Upper bound (PJ/yr) | Deviation (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Primary Energy\|Oil | PJ/yr | EN_NPi2020_300f | ZAF | C1 | 2100 | -129.975 | 0.268 | below lower bound | 0.268 | 202427.081 | 48555.28 |
+
+---
+
+## 5. Inter-variable Correlations
+
+_Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
+predictions against AR6 ground truth. A well-calibrated emulator should preserve
+the correlations present in real IAM data (e.g. coal consumption and GHG emissions
+should remain positively correlated). Methodology follows Li et al. (2025) Fig. 4._
+
+Inter-variable Pearson r² matrices at years 2030, 2050, and 2100, comparing model predictions against AR6 ground truth. Values close to the ground truth indicate the emulator preserves real-world variable relationships. Methodology follows Li et al. (2025) Fig. 4.
+
+### 2030
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
+![Inter-variable correlations 2030](figures/correlations_2030.png)
+
+### 2050
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
+![Inter-variable correlations 2050](figures/correlations_2050.png)
+
+### 2100
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
+![Inter-variable correlations 2100](figures/correlations_2100.png)
+
+### Summary: Mean Absolute Difference in r²
+
+_Average absolute difference between predictions and ground truth correlation matrices (off-diagonal pairs only). Lower is better — 0 would mean perfect preservation of inter-variable relationships._
+
+| Year | Mean \|Δr²\| (off-diagonal) |
+| --- | --- |
+| 2030 | 0.0219 |
+| 2050 | 0.0261 |
+| 2100 | 0.0350 |
