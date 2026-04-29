@@ -89,24 +89,26 @@ _DEFAULT_PATHS: dict[str, tuple[str, str]] = {
 # ---------------------------------------------------------------------------
 
 FEATURE_NAMES: list[str] = [
-    # Feature order confirmed from VAE-Secondary.ipynb cells 2 & 6
-    # (same column order used by CGAN/RCGAN training data)
-    "Carbon Sequestration|CCS",          # 0  Carbon_Sequestration_CCS_imputed
-    "Final Energy|Liquids",              # 1  Final Energy_Liquids
-    "Primary Energy|Gas",                # 2  Primary Energy_Gas
-    "Primary Energy|Oil",                # 3  Primary Energy_Oil
-    "Primary Energy|Coal",               # 4  PrimaryEnergy_Coal
+    # Feature order confirmed from Secondary-data-generate.ipynb,
+    # cell 3bd21e93 (Variables list) + cell 96ef0b61 (Kyoto_Gases appended).
+    # This is the order used to construct X, and therefore the channel order
+    # in Gen_C1234 / Gen_C56 / Gen_C78.
+    "Carbon Sequestration|CCS",                 # 0
+    "Final Energy|Liquids",                     # 1
+    "Primary Energy|Coal",                      # 2
+    "Primary Energy|Gas",                       # 3
+    "Primary Energy|Oil",                       # 4
     "Secondary Energy|Electricity|Nuclear",     # 5
-    "Secondary Energy|Electricity|Hydro",       # 6
-    "Secondary Energy|Electricity",             # 7  total electricity (parent)
-    "Secondary Energy|Electricity|Oil",         # 8
-    "Secondary Energy|Electricity|Coal",        # 9
-    "Secondary Energy|Electricity|Gas",         # 10
-    "Secondary Energy|Electricity|Wind",        # 11
-    "Secondary Energy|Electricity|Solar",       # 12
+    "Secondary Energy|Electricity|Oil",         # 6
+    "Secondary Energy|Electricity|Solar",       # 7
+    "Secondary Energy|Electricity|Wind",        # 8
+    "Secondary Energy|Electricity|Hydro",       # 9
+    "Secondary Energy|Electricity|Geothermal",  # 10
+    "Secondary Energy|Electricity|Gas",         # 11
+    "Secondary Energy|Electricity|Coal",        # 12
     "Secondary Energy|Electricity|Biomass",     # 13
-    "Secondary Energy|Electricity|Geothermal",  # 14
-    "Emissions|Kyoto Gases",             # 15  appended in cell 6
+    "Secondary Energy|Electricity",             # 14  parent (total)
+    "Emissions|Kyoto Gases",                    # 15
 ]
 
 # Timesteps: 2020–2100 in 10-year steps (9 steps, matching notebook output)

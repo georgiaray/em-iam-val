@@ -1,7 +1,7 @@
 # Li et al. Validation — VAE (li_vae_01)
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-04-10 15:11
+**Generated:** 2026-04-29 10:27
 **Results path:** `results/xgb/li_vae_01/`
 
 ---
@@ -10,11 +10,11 @@
 
 | Check | Metric | Predictions | Ground Truth |
 | --- | --- | --- | --- |
-| Hierarchy Sum Check | Scenario-region pass rate | 0.0% | 29.5% |
-|  | Mean relative error | 1979.419% | 26.303% |
+| Hierarchy Sum Check | Scenario-region pass rate | 14.1% | 29.5% |
+|  | Mean relative error | 2.698% | 26.303% |
 | Growth Rate Plausibility | Timestep violation rate | 2.0% | 1.9% |
-| Physical Bounds Check | Timestep violation rate | 2.00% | 1.72% |
-| Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.1370 | 0.0000 (reference) |
+| Physical Bounds Check | Timestep violation rate | 1.94% | 1.72% |
+| Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.0415 | 0.0000 (reference) |
 
 ---
 
@@ -29,7 +29,7 @@ ground truth pass rate to understand baseline data consistency._
 
 | Parent Variable | Scenario-regions | Pass rate (%) | Mean error (%) | Max error (%) |
 | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity | 30000 | 0.0000 | 1979.4190 | 48874.3009 |
+| Secondary Energy\|Electricity | 30000 | 14.0633 | 2.6981 | 33.3326 |
 
 ### Error Distribution
 
@@ -43,11 +43,11 @@ ground truth pass rate to understand baseline data consistency._
 
 | Percentile | Predictions (%) | Ground truth (%) |
 | --- | --- | --- |
-| p50 | 1456.6875 | 15.9965 |
-| p75 | 2146.2802 | 43.3961 |
-| p90 | 3833.5010 | 54.7023 |
-| p95 | 5538.8209 | 60.3917 |
-| p99 | 8133.2140 | 65.0777 |
+| p50 | 2.3036 | 15.9965 |
+| p75 | 3.3797 | 43.3961 |
+| p90 | 4.7061 | 54.7023 |
+| p95 | 5.8137 | 60.3917 |
+| p99 | 9.7373 | 65.0777 |
 
 ### Example Failure
 
@@ -55,21 +55,21 @@ _The median failing scenario (by mean error) is shown below to illustrate a typi
 
 #### Example failure — predictions
 
-**Scenario:** VAE | gen_03379 | World | C1234  
+**Scenario:** VAE | gen_09944 | World | C1234  
 **Parent variable:** Secondary Energy|Electricity  
-**Mean error:** 1456.81%  (median failing scenario)
+**Mean error:** 2.55%  (median failing scenario)
 
-| Year | Nuclear | Hydro | Oil | Coal | Gas | Wind | Solar | Biomass | Geothermal | Sum of children (EJ/yr) | Parent value (EJ/yr) | Difference | Error (%) |
+| Year | Nuclear | Oil | Solar | Wind | Hydro | Geothermal | Gas | Coal | Biomass | Sum of children (EJ/yr) | Parent value (EJ/yr) | Difference | Error (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2020.0 | 8.75 | 2.029 | 6.095 | 15.349 | 0.204 | 24.644 | 34.627 | 1.252 | 94.963 | 187.912 | 2.525 | -185.387 | 7341.11 |
-| 2030.0 | 11.327 | 0.377 | 15.476 | 17.885 | 0.353 | 37.848 | 17.015 | 1.661 | 112.034 | 213.977 | 9.094 | -204.883 | 2252.97 |
-| 2040.0 | 12.856 | 0.184 | 27.15 | 21.651 | 0.715 | 48.119 | 3.224 | 1.289 | 142.061 | 257.249 | 26.088 | -231.161 | 886.09 |
-| 2050.0 | 18.96 | 0.062 | 46.13 | 24.875 | 1.889 | 49.829 | 0.304 | 1.256 | 187.774 | 331.08 | 46.829 | -284.252 | 607.01 |
-| 2060.0 | 33.649 | 0.062 | 62.632 | 28.233 | 3.235 | 48.809 | 0.153 | 2.329 | 241.063 | 420.165 | 67.985 | -352.18 | 518.03 |
-| 2070.0 | 62.448 | 0.032 | 85.368 | 33.354 | 4.491 | 40.207 | 0.146 | 3.413 | 335.061 | 564.521 | 101.82 | -462.7 | 454.43 |
-| 2080.0 | 105.475 | 0.023 | 109.411 | 36.633 | 5.397 | 22.571 | 0.244 | 4.295 | 432.262 | 716.311 | 146.3 | -570.011 | 389.62 |
-| 2090.0 | 148.018 | 0.003 | 132.188 | 37.903 | 6.156 | 7.966 | 0.097 | 4.839 | 527.298 | 864.468 | 197.342 | -667.126 | 338.05 |
-| 2100.0 | 150.983 | 0.005 | 154.889 | 37.688 | 6.311 | 3.427 | 0.137 | 5.211 | 576.959 | 935.611 | 220.682 | -714.93 | 323.96 |
+| 2020.0 | 7.679 | 2.002 | 4.165 | 6.357 | 17.998 | 0.914 | 26.764 | 31.251 | 1.759 | 98.889 | 100.584 | 1.695 | 1.69 |
+| 2030.0 | 8.744 | 0.539 | 25.49 | 20.286 | 22.472 | 1.34 | 32.24 | 21.47 | 2.444 | 135.024 | 136.529 | 1.505 | 1.1 |
+| 2040.0 | 10.921 | 0.047 | 61.686 | 48.472 | 26.671 | 1.196 | 25.785 | 3.843 | 2.067 | 180.688 | 181.749 | 1.061 | 0.58 |
+| 2050.0 | 12.287 | 0.036 | 100.656 | 85.998 | 29.294 | 1.187 | 11.736 | 0.723 | 2.044 | 243.96 | 251.082 | 7.121 | 2.84 |
+| 2060.0 | 12.554 | 0.012 | 152.891 | 118.152 | 30.723 | 1.196 | 7.469 | 0.342 | 1.724 | 325.063 | 330.625 | 5.563 | 1.68 |
+| 2070.0 | 13.925 | 0.005 | 200.937 | 145.682 | 31.257 | 1.145 | 8.745 | 0.308 | 1.694 | 403.697 | 417.748 | 14.051 | 3.36 |
+| 2080.0 | 14.022 | 0.0 | 252.267 | 156.728 | 31.789 | 1.109 | 7.922 | 0.286 | 1.104 | 465.23 | 477.292 | 12.062 | 2.53 |
+| 2090.0 | 13.585 | 0.0 | 293.366 | 161.235 | 32.624 | 1.017 | 7.344 | 0.246 | 1.122 | 510.539 | 537.461 | 26.922 | 5.01 |
+| 2100.0 | 14.491 | 0.0 | 337.778 | 178.996 | 31.929 | 1.117 | 7.065 | 0.248 | 1.46 | 573.084 | 598.161 | 25.077 | 4.19 |
 
 #### Example failure — ground truth
 
@@ -100,7 +100,7 @@ Empirical bounds are derived per variable._
 
 **Total timesteps evaluated:** 3,840,000  
 **Violations:** 76,800 (2.00%)  
-**Median severity** (violations only): 0.060 bound-widths  
+**Median severity** (violations only): 0.062 bound-widths  
 
 **Ground truth — violation rate:** 1.94%  
 **Ground truth — median severity:** 0.067 bound-widths  
@@ -114,22 +114,22 @@ _(+0.06pp difference: predictions vs ground truth)_
 
 | Variable | Lower bound | Upper bound |
 | --- | --- | --- |
-| Carbon Sequestration\|CCS | -0.5850 | 29.2822 |
-| Emissions\|Kyoto Gases | -2.9730 | 0.2174 |
-| Final Energy\|Liquids | -0.3624 | 0.2336 |
-| Primary Energy\|Coal | -0.5697 | 0.2189 |
-| Primary Energy\|Gas | -0.8223 | 0.5690 |
-| Primary Energy\|Oil | -0.3716 | 0.3893 |
-| Secondary Energy\|Electricity | -0.0725 | 6.0635 |
-| Secondary Energy\|Electricity\|Biomass | -0.4991 | 1.9926 |
-| Secondary Energy\|Electricity\|Coal | -0.0732 | 0.4337 |
-| Secondary Energy\|Electricity\|Gas | -0.4507 | 2.9002 |
-| Secondary Energy\|Electricity\|Geothermal | -0.0073 | 0.5259 |
-| Secondary Energy\|Electricity\|Hydro | -0.9614 | 5.1969 |
-| Secondary Energy\|Electricity\|Nuclear | -0.4553 | 1.2345 |
-| Secondary Energy\|Electricity\|Oil | -0.0449 | 3.0933 |
-| Secondary Energy\|Electricity\|Solar | -0.9358 | 1.4531 |
-| Secondary Energy\|Electricity\|Wind | -0.7247 | 0.7271 |
+| Carbon Sequestration\|CCS | -0.7966 | 41.3670 |
+| Emissions\|Kyoto Gases | -3.0636 | 0.2106 |
+| Final Energy\|Liquids | -0.3750 | 0.2474 |
+| Primary Energy\|Coal | -0.8393 | 0.5238 |
+| Primary Energy\|Gas | -0.4192 | 0.3786 |
+| Primary Energy\|Oil | -0.6394 | 0.2407 |
+| Secondary Energy\|Electricity | -0.0110 | 0.5077 |
+| Secondary Energy\|Electricity\|Biomass | -0.6294 | 2.3049 |
+| Secondary Energy\|Electricity\|Coal | -0.9185 | 1.1848 |
+| Secondary Energy\|Electricity\|Gas | -0.8072 | 0.8355 |
+| Secondary Energy\|Electricity\|Geothermal | -0.4644 | 2.5247 |
+| Secondary Energy\|Electricity\|Hydro | -0.0724 | 0.4358 |
+| Secondary Energy\|Electricity\|Nuclear | -0.4713 | 1.2260 |
+| Secondary Energy\|Electricity\|Oil | -0.9940 | 5.4921 |
+| Secondary Energy\|Electricity\|Solar | -0.0654 | 5.7613 |
+| Secondary Energy\|Electricity\|Wind | -0.0663 | 2.9919 |
 
 ### Severity Distribution
 
@@ -141,9 +141,9 @@ _Severity = how many bound-widths the growth rate exceeds the limit._
 
 | Category | Timesteps | Violations | Violation rate (%) |
 | --- | --- | --- | --- |
-| C1234 | 1280000 | 41641 | 3.2500 |
-| C78 | 1280000 | 21687 | 1.6900 |
-| C56 | 1280000 | 13472 | 1.0500 |
+| C1234 | 1280000 | 42706 | 3.3400 |
+| C78 | 1280000 | 21333 | 1.6700 |
+| C56 | 1280000 | 12761 | 1.0000 |
 
 ### Example Violation
 
@@ -155,7 +155,7 @@ _The most severe violation (highest severity in bound-widths) is shown below._
 
 | Variable | Units | Scenario | Region | Category | Year | Previous value | Current value | Growth rate | Lower bound | Upper bound | Direction | Severity (bw) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Emissions\|Kyoto Gases |  | gen_00821 | World | C1234 | 2100 | 0.041 | -2004.938 | -48883.2857 | -2.973 | 0.2174 | below lower bound | 15321.179 |
+| Emissions\|Kyoto Gases |  | gen_05045 | World | C1234 | 2090 | -0.084 | -4968.428 | -59157.9535 | -3.0636 | 0.2106 | below lower bound | 18067.125 |
 
 #### Example violation — ground truth
 
@@ -184,29 +184,29 @@ _Checks predicted values against hard physical lower bounds (energy variables �
 and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 **Timesteps checked:** 4,320,000  
-**Violations:** 86,367 (1.999%)  
-**Fully clean scenario-regions:** 438,807 / 480,000
+**Violations:** 83,699 (1.937%)  
+**Fully clean scenario-regions:** 437,452 / 480,000
 
 ### Bounds Applied
 
 | Variable | Units | Lower bound | Upper bound |
 | --- | --- | --- | --- |
-| Carbon Sequestration\|CCS |  | 3.378 | 2.733e+04 |
-| Final Energy\|Liquids |  | 42.26 | 327.5 |
-| Primary Energy\|Gas | PJ/yr | 0.6339 | 492.3 |
-| Primary Energy\|Oil | PJ/yr | 31.26 | 367.1 |
-| Primary Energy\|Coal | PJ/yr | 5.235 | 311.5 |
-| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 1.532 | 129.6 |
-| Secondary Energy\|Electricity\|Hydro | EJ/yr | 7.815e-05 | 8.625 |
-| Secondary Energy\|Electricity | EJ/yr | 1.436 | 331.6 |
-| Secondary Energy\|Electricity\|Oil | EJ/yr | 4.761 | 232.8 |
-| Secondary Energy\|Electricity\|Coal | EJ/yr | 12.26 | 54.3 |
-| Secondary Energy\|Electricity\|Gas | EJ/yr | 0.02859 | 6.425 |
-| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.5396 | 121 |
-| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.008665 | 102.8 |
-| Secondary Energy\|Electricity\|Biomass | EJ/yr | 0.1094 | 48.41 |
-| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 94.1 | 595.8 |
-| Emissions\|Kyoto Gases |  | -8461 | 1.052e+05 |
+| Carbon Sequestration\|CCS |  | 0.252 | 2.723e+04 |
+| Final Energy\|Liquids |  | 40.44 | 321.2 |
+| Primary Energy\|Coal | PJ/yr | 0.4315 | 510.3 |
+| Primary Energy\|Gas | PJ/yr | 27.64 | 368.2 |
+| Primary Energy\|Oil | PJ/yr | 4.187 | 303.4 |
+| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 1.296 | 131.9 |
+| Secondary Energy\|Electricity\|Oil | EJ/yr | 8.089e-07 | 8.537 |
+| Secondary Energy\|Electricity\|Solar | EJ/yr | 1.467 | 351.4 |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | 4.515 | 241.1 |
+| Secondary Energy\|Electricity\|Hydro | EJ/yr | 12.32 | 56.15 |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 0.03062 | 6.419 |
+| Secondary Energy\|Electricity\|Gas | EJ/yr | 0.2 | 120.1 |
+| Secondary Energy\|Electricity\|Coal | EJ/yr | 0.02252 | 108.2 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | 0.05195 | 48.94 |
+| Secondary Energy\|Electricity | EJ/yr | 94.08 | 623.4 |
+| Emissions\|Kyoto Gases |  | -8230 | 1.08e+05 |
 
 ### Violations by Variable
 
@@ -216,10 +216,10 @@ and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 | Source | Timesteps | Violations | Violation rate |
 | --- | --- | --- | --- |
-| Predictions | 4,320,000 | 86,367 | 1.999% |
+| Predictions | 4,320,000 | 83,699 | 1.937% |
 | Ground truth | 228,266 | 3,933 | 1.723% |
 
-_Predictions show +0.276 pp more violations than ground truth._
+_Predictions show +0.214 pp more violations than ground truth._
 
 ### Violation Rate by Variable — Predictions vs Ground Truth
 
@@ -235,7 +235,7 @@ _The most extreme violation (largest % deviation from the breached bound) is sho
 
 | Variable | Units | Scenario | Region | Category | Year | Value (EJ/yr) | Bound breached (EJ/yr) | Direction | Lower bound (EJ/yr) | Upper bound (EJ/yr) | Deviation (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Wind | EJ/yr | gen_07202 | World | C1234 | 2090 | 0.0 | 0.54 | below lower bound | 0.54 | 121.042 | 100.00 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | gen_23297 | World | C78 | 2090 | 0.0 | 0.052 | below lower bound | 0.052 | 48.942 | 99.98 |
 
 #### Example violation — ground truth
 
@@ -280,6 +280,6 @@ _Average absolute difference between predictions and ground truth correlation ma
 
 | Year | Mean \|Δr²\| (off-diagonal) |
 | --- | --- |
-| 2030 | 0.1437 |
-| 2050 | 0.1449 |
-| 2100 | 0.1223 |
+| 2030 | 0.0409 |
+| 2050 | 0.0412 |
+| 2100 | 0.0424 |

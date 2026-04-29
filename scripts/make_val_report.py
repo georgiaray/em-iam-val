@@ -938,9 +938,8 @@ def section_correlations(results_base: Path, fig_dir: Path) -> tuple[str, list]:
     pred_long = pd.read_csv(pred_path)
     gt_long   = pd.read_csv(gt_path) if gt_path.exists() else None
 
-    # Short variable labels for axis ticks (last segment after |)
     all_vars = sorted(pred_long["Variable"].unique())
-    short_labels = {v: v.split("|")[-1].strip() for v in all_vars}
+    short_labels = {v: v for v in all_vars}  # use full variable names
 
     YEARS = [2030, 2050, 2100]
     available_years = [y for y in YEARS if y in pred_long["Year"].values]
@@ -1002,7 +1001,7 @@ def section_correlations(results_base: Path, fig_dir: Path) -> tuple[str, list]:
 
         n_panels = 3 if gt_mat is not None else 1
         fig, axes = plt.subplots(1, n_panels,
-                                 figsize=(5 * n_panels, max(4, len(pred_mat) * 0.55)))
+                                 figsize=(8 * n_panels, max(6, len(pred_mat) * 0.7)))
         if n_panels == 1:
             axes = [axes]
 
