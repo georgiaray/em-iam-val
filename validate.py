@@ -271,7 +271,11 @@ def main():
     )
 
     if args.report:
-        print("\n[Report generation not yet implemented]")
+        import importlib, sys as _sys
+        _sys.path.insert(0, str(REPO_ROOT))
+        rpt = importlib.import_module("make_val_report")
+        _sys.argv = ["make_val_report", "--run_id", args.run_id, "--out_dir", args.out_dir]
+        rpt.main()
 
     sys.exit(0 if result["passed"] else 1)
 

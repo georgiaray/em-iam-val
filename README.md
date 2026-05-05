@@ -9,34 +9,65 @@ This framework is developed as part of a research project establishing validatio
 
 ---
 
+## Design
+
+The framework has a strict two-layer architecture.
+
+**Adapters** convert dataset-specific artifacts (model checkpoints, numpy arrays, etc.) into a canonical CSV format. They know about RunStore, numpy files, and unit conventions. They produce data and nothing else.
+
+**Checks** consume canonical CSVs. They have no knowledge of where data came from. Each check exposes a `run(predictions, ground_truth, ...)` function that takes DataFrames and a standalone CLI that reads files.
+
+This means any new emulation study can be validated by writing one adapter.
+
+### Canonical format
+
+All data is long-format CSV with these required columns:
+
+```
+Model, Scenario, Region, Scenario_Category, Year, Variable, Value, Units
+```
+
+The `Units` column is populated by adapters and read directly by `normalize_to_canonical()` before any check runs. No separate unit config is needed.
+
+### Canonical units
+
+| Dimension | Canonical unit |
+|-----------|---------------|
+| Energy | EJ |
+| CO₂ | MtCO₂ |
+| CH₄ | MtCH₄ |
+| N₂O | MtN₂O |
+| CO₂eq (Kyoto aggregates) | MtCO₂eq (not converted) |
+
+---
+
 ## Repository structure
 
 ```
 em-iam-val/
-├── scripts/        # Validation check scripts and runner
-├── reports/        # Generated markdown reports and figures (per run)
+├── adapters/
+│   ├── xgb_adapter.py          # ML-IAM (Shin et al.) → canonical CSV
+│   └── li_adapter.py           # Deep-IAM (Li et al.) → canonical CSV
+├── checks/
+│   ├── utils.py                # Canonical format, normalization, shared helpers
+│   ├── bounds_check.py
+│   ├── check_plausibility.py
+│   ├── hard_historical_constraints.py
+│   ├── inter_variable_correlation.py
+│   ├── regional_consistency.py
+│   ├── soft_future_constraints.py
+│   └── sum_check.py
+├── adapted-data/               # Canonical CSVs written by adapters (gitignored)
+├── results/                    # Check outputs per run_id (gitignored)
+├── reports/                    # Generated reports
+├── validate.py                 # Unified runner
 ├── pyproject.toml
-├── LICENSE
 └── README.md
 ```
 
 ---
 
-## Prerequisites
-
-The framework currently loads model artifacts (predictions, scalers, processed data) from an adjacent ml-iam installation. By default it expects ml-iam to live at `../ml-iam` relative to this repository. If your ml-iam installation is elsewhere, set:
-
-```bash
-export ML_IAM_ROOT=/path/to/ml-iam
-```
-
-You will also need to have completed at least one training run in ml-iam so that cached predictions and data exist under `ml-iam/results/`.
-
----
-
 ## Installation
-
-Everything runs inside a single Poetry environment. No separate conda or virtual environment is needed.
 
 ```bash
 cd em-iam-val
@@ -48,255 +79,199 @@ poetry shell
 
 ## Usage
 
-### Shin et al. (ML-IAM / XGBoost)
+### Step 1 — Adapt your data
 
-Run all checks for a completed ml-iam run and generate a report:
+Run the appropriate adapter once to convert model artifacts into canonical CSVs.
 
-```bash
-python scripts/run_all.py --run_id xgb_04 --report
-```
-
-Run checks and generate a report in separate steps:
+**Shin et al. (ML-IAM / XGBoost):**
 
 ```bash
-python scripts/run_all.py --run_id xgb_04
-python scripts/make_val_report.py --run_id xgb_04
+python adapters/xgb_adapter.py --run_id xgb_04 --out_dir adapted-data/
 ```
 
-Run an individual check:
+Requires ml-iam at `../ml-iam` (or set `ML_IAM_ROOT=/path/to/ml-iam`). Produces `adapted-data/xgb_04_predictions.csv` and `adapted-data/xgb_04_ground_truth.csv`.
+
+**Li et al. (Deep-IAM / generative):**
 
 ```bash
-python scripts/check_plausibility.py --run_id xgb_04
-python scripts/sum_check.py --run_id xgb_04
-python scripts/regional_consistency.py --run_id xgb_04
-python scripts/bounds_check.py --run_id xgb_04
+python adapters/li_adapter.py --model vae --run_id li_vae_01 --out_dir adapted-data/
 ```
 
-Run all checks then generate the ground truth reference comparison:
+Requires the Li-emulation repository at `../Li-emulation`. Produces `adapted-data/li_vae_01_predictions.csv` and `adapted-data/li_vae_01_ground_truth.csv`.
+
+### Step 2 — Validate
 
 ```bash
-python scripts/run_all.py --run_id xgb_04
-python scripts/run_groundtruth.py --run_id xgb_04
-python scripts/make_val_report.py --run_id xgb_04
+# Shin et al.
+python validate.py \
+    --predictions adapted-data/xgb_04_predictions.csv \
+    --ground_truth adapted-data/xgb_04_ground_truth.csv \
+    --run_id xgb_04
+
+# Li et al.
+python validate.py \
+    --predictions adapted-data/li_vae_01_predictions.csv \
+    --ground_truth adapted-data/li_vae_01_ground_truth.csv \
+    --run_id li_vae_01
 ```
 
-### Li et al. (Deep-IAM / generative)
+Results are written to `results/<run_id>/<check_name>/`.
 
-Run the full validation suite (generated outputs + ground truth reference + report):
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--only` | (all) | Run only these checks (space-separated names) |
+| `--skip` | (none) | Skip these checks |
+| `--percentile` | 1.0 | Tail percentile for empirical bounds |
+| `--threshold` | 0.012 | Relative error tolerance for sum/regional checks |
+| `--world_region` | World | Region label for global aggregate |
+| `--by_category` | off | Break down plausibility violations by scenario category |
+| `--report` | off | Generate a summary report after validation |
+
+### Running a single check
+
+Each check can be run directly:
 
 ```bash
-python scripts/run_li_all.py --run_id li_vae_01 --model vae --report
-python scripts/run_li_all.py --run_id li_cgan_01 --model cgan --report
-python scripts/run_li_all.py --run_id li_rcgan_01 --model rcgan --report
+python checks/bounds_check.py \
+    --predictions adapted-data/xgb_04_predictions.csv \
+    --ground_truth adapted-data/xgb_04_ground_truth.csv \
+    --run_id xgb_04
+
+python checks/hard_historical_constraints.py \
+    --predictions adapted-data/li_vae_01_predictions.csv \
+    --run_id li_vae_01
 ```
-
-Run only the ground truth reference pass:
-
-```bash
-python scripts/run_li_groundtruth.py --run_id li_gt_01 --report
-```
-
-If the Li et al. data is not in the default location (`../Li-emulation/Policy-Generative Model`), pass the path explicitly:
-
-```bash
-python scripts/run_li_all.py --run_id li_vae_01 --model vae --li_path /path/to/Li-emulation/Policy-Generative\ Model
-```
-
-**Note on applicable checks:** The Li et al. dataset is World-level only, so `regional_consistency` does not apply and is not run. Growth-rate checks use 10-year timesteps rather than the 5-year timesteps used for Shin. These differences are flagged in the report.
-
-Reports are written to `reports/<run_id>/report.md`. Check result CSVs are written to `ml-iam/results/xgb/<run_id>/` alongside the model artifacts they describe.
 
 ---
 
 ## Checks
 
-### `check_plausibility.py` — Growth Rate Plausibility Check
+### `check_plausibility` — Growth Rate Plausibility
 
-**What it does:**
-For each generated (predicted) trajectory (scenario × region × variable), computes the 5-year period-on-period growth rate:
+Computes period-on-period growth rates for every trajectory and checks they fall within empirically-derived bounds from the ground truth data (default 1st/99th percentile of observed growth rates per variable). Flags any timestep where the predicted growth rate falls outside those bounds.
 
-```
-g_y = (x_y - x_{y-5}) / x_{y-5}
-```
+Required: any time-varying variables. If ground truth is not provided, bounds are derived from the predictions themselves.
 
-The AR6 test-set ground truth is used solely to derive empirical reference bounds (by default the 1st/99th percentiles of observed growth rates per variable). These bounds represent what physically plausible growth looks like in real IAM data. The check then flags any timestep in the generated predictions where the growth rate falls outside those bounds.
-
-**Required model outputs:** Any combination of output variables. Only meaningful for variables that change over time.
-
-**Required data:** AR6 test-set ground truth loaded automatically from the run's cached `processed_data.parquet` — used only to derive reference bounds.
-
-**Key options:**
-
-| Flag | Default | Description |
-|---|---|---|
-| `--percentile` | `1.0` | Lower tail percentile (upper = 100 − percentile). Use `5` for stricter bounds. |
-| `--by_category` | off | Also break down violations by scenario category (C1–C8) |
-
-**Outputs** (`ml-iam/results/xgb/<run_id>/plausibility/`):
-- `report.txt`
-- `growth_rate_violations.csv`
-- `empirical_bounds.csv`
+**Key options:** `--percentile` (default 1.0), `--by_category`
 
 ---
 
-### `sum_check.py` — Hierarchy Sum Check
+### `sum_check` — Hierarchy Sum Check
 
-**What it does:**
-Automatically discovers all parent-child variable relationships in the run's target set using the `|` separator convention (e.g. `Secondary Energy|Electricity` is a parent of `Secondary Energy|Electricity|Solar`). For each parent, verifies that the predicted parent value equals the sum of its direct children at every timestep:
+Auto-discovers parent-child variable relationships using the `|` separator convention and verifies that each predicted parent equals the sum of its direct children:
 
 ```
-error = |parent - sum_of_children| / |parent|
+error = |parent − Σ children| / |parent|
 ```
 
-A scenario passes if `error < 1.2%` at every timestep for every parent variable. We expect predictions to fail this check — that failure is the signal, demonstrating that the model has no hard constraint enforcing the sum relationship. Most useful when compared against the same check run on the AR6 ground truth (`--use_ground_truth`), which should mostly pass.
+A scenario passes if the mean relative error is below the threshold (default 1.2%). Predictions are expected to fail — the failure rate is the signal.
 
-**Required model outputs:** At least one parent variable and at least one of its direct children must both be in the run's targets.
-
-**Required data:** Only the run's cached predictions. No ground truth needed to evaluate the constraint.
-
-**Key options:**
-
-| Flag | Default | Description |
-|---|---|---|
-| `--threshold` | `0.012` | Maximum allowed relative error per timestep (1.2%) |
-| `--abs_floor` | `1.0` | Minimum absolute parent value for relative error to be computed |
-| `--use_ground_truth` | off | Check AR6 ground truth instead of predictions |
-
-**Outputs** (`ml-iam/results/xgb/<run_id>/sum_check/`):
-- `report.txt`
-- `scenario_summary.csv`
-- `timestep_errors.csv`
+**Key options:** `--threshold` (default 0.012), `--abs_floor` (default 1.0), `--pass_mode` (mean|all)
 
 ---
 
-### `regional_consistency.py` — Regional Consistency Check
+### `regional_consistency` — Regional Consistency Check
 
-**What it does:**
-Verifies that predicted values for the `World` region equal the sum of predicted values across all subregions in a complete regional grouping (R5, R6, or R10):
+Checks that World values equal the sum of subregion values across complete R5, R6, and R10 groupings. Partial groupings are skipped. Not applicable to World-only datasets.
 
-```
-error = |World - sum_of_subregions| / |World|
-```
-
-For each (Model, Scenario), the check auto-detects which groupings have full coverage. Only complete groupings are checked — scenarios with partial regional coverage are skipped with the coverage count reported.
-
-**Required model outputs:** Any target variables where World and subregional predictions both exist.
-
-**Required data:** Only the run's cached predictions.
-
-**Regional groupings:**
-- `R5` — R5ASIA, R5LAM, R5MAF, R5OECD90+EU, R5REF
-- `R6` — R6AFRICA, R6ASIA, R6LAM, R6MIDDLE_EAST, R6OECD90+EU, R6REF
-- `R10` — R10AFRICA, R10CHINA+, R10EUROPE, R10INDIA+, R10LATIN_AM, R10MIDDLE_EAST, R10NORTH_AM, R10PAC_OECD, R10REF_ECON, R10REST_ASIA, R10ROWO
-
-**Key options:**
-
-| Flag | Default | Description |
-|---|---|---|
-| `--threshold` | `0.012` | Maximum allowed relative error per timestep (1.2%) |
-| `--abs_floor` | `1.0` | Minimum absolute World value for relative error to be computed |
-| `--grouping` | all | Restrict to a single grouping: `R5`, `R6`, or `R10` |
-| `--use_ground_truth` | off | Check AR6 ground truth instead of predictions |
-
-**Outputs** (`ml-iam/results/xgb/<run_id>/regional_consistency/`):
-- `report.txt`
-- `scenario_summary.csv`
-- `timestep_errors.csv`
+**Key options:** `--threshold` (default 0.012), `--grouping` (R5|R6|R10, default all)
 
 ---
 
-### `bounds_check.py` — Physical Bounds Check
+### `bounds_check` — Physical Bounds Check
 
-**What it does:**
-Checks predicted values against hard physical bounds and, optionally, empirical bounds derived from the AR6 test-set ground truth.
+Two types of bounds:
 
-**Hard physical bounds** are defined in `PHYSICAL_BOUNDS` at the top of the script. Energy generation variables must be non-negative. Emissions have no hard lower bound because CDR scenarios can produce negative net emissions.
+- **Hard physical bounds** — energy generation variables cannot be negative.
+- **Empirical bounds** — per-variable percentile range derived from ground truth (default 1st/99th percentile), representing the envelope of values seen in real IAM data. Disable with `--no_empirical`.
 
-**Empirical bounds** (on by default) are derived per-variable from the AR6 test-set ground truth at the chosen percentile range, representing the envelope of values seen in real IAM data. Combined with physical bounds by taking the more restrictive of the two on each side.
-
-**Required model outputs:** Any target variables listed in `PHYSICAL_BOUNDS`, or any variable if empirical bounds are enabled.
-
-**Required data:** AR6 ground truth required unless `--no_empirical` is set.
-
-**Key options:**
-
-| Flag | Default | Description |
-|---|---|---|
-| `--no_empirical` | off | Disable empirical bounds — use physical bounds only |
-| `--percentile` | `1.0` | Tail percentile for empirical bounds |
-| `--use_ground_truth` | off | Check AR6 ground truth instead of predictions |
-
-**Outputs** (`ml-iam/results/xgb/<run_id>/bounds_check/`):
-- `report.txt`
-- `scenario_summary.csv`
-- `violations.csv`
-- `bounds_used.csv`
+**Key options:** `--percentile` (default 1.0), `--no_empirical`
 
 ---
 
-### `export_predictions.py` — Predictions Export
+### `hard_historical_constraints` — Hard Historical Constraints
 
-**What it does:**
-Exports model predictions and AR6 ground truth in long (tidy) format as CSVs. Called automatically by `run_all.py` after all checks complete. Can also be run standalone.
+Checks World-level predictions at the 2020 reference year against the historical anchor values from the AR6 scenario vetting process (Nicholls et al. 2022, Table 11). Each scenario is classified as PASS (within inner IP-range), WARN (within outer tolerance but outside IP-range), or FAIL. Sub-checks are automatically skipped if required variables are absent.
 
-The exported CSVs have columns: `Model, Scenario, Region, Scenario_Category, Year, Variable, Value`.
+| Sub-check | Variable(s) | Reference | Outer | IP-range |
+|-----------|-------------|-----------|-------|---------|
+| `co2_eip_2020` | `Emissions\|CO2` | 37,646 MtCO₂/yr | ±20% | ±10% |
+| `ch4_2020` | `Emissions\|CH4` | 379 MtCH₄/yr | ±20% | ±20% |
+| `co2_change_2010_2020` | `Emissions\|CO2` | 0–50% change | — | — |
+| `ccs_2020` | `Carbon Sequestration\|CCS` | 0–250 MtCO₂/yr | — | 0–100 MtCO₂/yr |
+| `primary_energy_2020` | `Primary Energy` | 578 EJ | ±20% | ±10% |
+| `nuclear_energy_2020` | `Primary Energy\|Nuclear` | 9.77 EJ | ±30% | ±20% |
+| `solar_wind_2020` | `Primary Energy\|Solar` + `\|Wind` | 8.51 EJ | ±50% | ±25% |
 
-**Required data:** A completed ml-iam run with cached predictions and processed data.
+The nuclear and solar/wind checks use `Primary Energy` variables because the AR6 vetting was designed to detect primary energy accounting errors (direct vs thermal equivalent convention). `Secondary Energy|Electricity` is not an equivalent substitute.
 
-**Outputs** (`ml-iam/results/xgb/<run_id>/predictions/`):
-- `predictions_long.csv`
-- `groundtruth_long.csv`
+If computed values appear implausibly scaled (median more than 100× off the reference), a unit mismatch warning is included in the output.
+
+**Key options:** `--world_region` (default "World")
 
 ---
 
-### `make_val_report.py` — Validation Report Generator
+### `soft_future_constraints` — Soft Future Constraints
 
-**What it does:**
-Reads the CSV outputs from all completed checks and generates a single Markdown report with summary tables and figures, including side-by-side comparisons between model predictions and AR6 ground truth wherever ground truth results are available.
+Checks World-level predictions at specific future years against domain-knowledge plausibility bounds from the AR6 vetting (Table 11). These criteria were flagged as potentially problematic in AR6 but not used as hard exclusion criteria. They are warranted here via the constraint-violation argument: the IAMs were themselves vetted against these criteria, so emulator violations represent emulation failures.
 
-Must be run after `run_all.py` (or after whichever individual checks you want included). Missing check outputs are silently skipped.
+| Sub-check | Variable | Year | Criterion |
+|-----------|---------|------|-----------|
+| `co2_not_negative_2030` | `Emissions\|CO2` | 2030 | > 0 |
+| `ccs_2030` | `Carbon Sequestration\|CCS` | 2030 | < 2,000 MtCO₂/yr |
+| `nuclear_electricity_2030` | `Secondary Energy\|Electricity\|Nuclear` | 2030 | < 20 EJ/yr |
+| `ch4_2040` | `Emissions\|CH4` | 2040 | 100–1,000 MtCH₄/yr |
 
-The report contains five sections:
+**Key options:** `--world_region` (default "World")
 
-1. **Hierarchy Sum Check** — whether parent variables equal the sum of their children
-2. **Growth Rate Plausibility** — whether 5-year growth rates stay within AR6 bounds
-3. **Regional Consistency** — whether World values equal the sum of subregion values
-4. **Physical Bounds Check** — whether values stay within physical and empirical bounds
-5. **Inter-variable Correlations** — Pearson r² matrices at 2030, 2050, 2100, comparing predictions against AR6 ground truth (mirrors Li et al. 2025 Fig. 4)
+---
 
-**Required data:** CSV outputs from the individual checks under `ml-iam/results/xgb/<run_id>/`, plus `predictions/predictions_long.csv` (from `export_predictions.py`) for section 5.
+### `inter_variable_correlation` — Inter-variable Correlation
 
-**Key options:**
+Computes Pearson r² correlation matrices between all predicted variables at years 2030, 2050, and 2100, and compares against the ground truth correlation structure. A well-calibrated emulator should preserve the inter-variable relationships present in the parent simulation. Produces heatmap figures and a summary table of mean |Δr²| per year. Belongs to the **variance and covariance metrics** validation family.
 
-| Flag | Default | Description |
-|---|---|---|
-| `--title` | `"Validation Report: <run_id>"` | Optional custom report title |
-
-**Outputs** (`reports/<run_id>/`):
-- `report.md`
-- `figures/*.png`
+**Key options:** `--years` (default 2030 2050 2100)
 
 ---
 
 ## Adding a new check
 
-1. Create `scripts/<your_check>.py` with a `main()` function that accepts `--run_id` at minimum. Set `REPO_ROOT` using the `ML_IAM_ROOT` pattern at the top of the file (copy from any existing check).
-2. Add an entry to the `CHECKS` registry in `scripts/run_all.py`:
+1. Create `checks/<your_check>.py`. The `run()` signature must be:
+   ```python
+   def run(predictions: pd.DataFrame, ground_truth: pd.DataFrame = None,
+           out_dir: str = "results", run_id: str = "run", **kwargs) -> dict:
+   ```
+   Return dict keys: `check_name`, `passed`, `results`, `summary`, `unit_warnings`, `skipped`.
+
+2. Add a `main()` with argparse that calls `normalize_to_canonical(load_csv(...))` before calling `run()`.
+
+3. Register it in `validate.py`:
    ```python
    CHECKS = [
        ...
-       ("your_check", "Description of your check"),
+       ("your_check", "Human-readable description"),
    ]
    ```
-3. Add a corresponding `--no-<your_check>` flag to `run_all.py` if you want it to be skippable.
-4. Document it in this README following the same structure as the existing checks. Be explicit about whether the check uses AR6 ground truth (as a reference only) or purely the generated predictions.
+
+## Adding a new dataset
+
+Write one adapter in `adapters/<dataset>_adapter.py`. Its job: load whatever format your model uses, set the `Units` column correctly for each variable, write canonical CSVs. `normalize_to_canonical()` handles the rest.
 
 ---
 
-## Terminology
+## Notes on specific datasets
 
-- **AR6 test set** (`y_test`) — the withheld 10% of AR6 scenarios used to evaluate model accuracy. Real, observed IAM data. Used in some checks as a reference to derive empirical bounds or thresholds, but never the thing being validated.
-- **Predictions** (`preds`) — the synthetic scenarios generated by the model. What every check is evaluating. The question asked is always: are the generated predictions physically plausible?
+**Li et al. (Deep-IAM):**
+- World-level only — `regional_consistency` skips cleanly with a message
+- 10-year timesteps (2020–2100 for generated outputs; 2010–2100 for ground truth)
+- Uses `Emissions|Kyoto Gases` (MtCO₂eq/yr) rather than individual CO₂ and CH₄ — checks requiring `Emissions|CO2` or `Emissions|CH4` are automatically skipped
+
+**ML-IAM (Shin et al. / XGBoost):**
+- Multi-region (up to 49 regions including World and R5/R6/R10 groupings)
+- 5-year timesteps (2015–2100)
+- `Primary Energy|*` stored as PJ/yr in the ml-iam config; `Secondary Energy|Electricity|*` labeled EJ/yr but actually stored as PJ/yr — the unit plausibility check will flag this when it runs
 
 ---
 
