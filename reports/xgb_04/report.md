@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 15:45
+**Generated:** 2026-05-05 15:51
 **Results:** `results/xgb_04/`
 
 ---
@@ -10,12 +10,13 @@
 
 | Check | Metric | Predictions | Ground Truth |
 | --- | --- | --- | --- |
-| Hierarchy Sum Check | Scenario-region pass rate | 1.3% | 66.4% |
-|  | Mean relative error | 6.538% | 1.365% |
-| Growth Rate Plausibility | Timestep violation rate | 12.6% | 16.9% |
-| Regional Consistency | Scenario × variable pass rate | 0.0% | 0.0% |
-| Physical Bounds Check | Timestep violation rate | 3.72% | 1.59% |
-| Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
+| 1. Hierarchy Sum Check | Pass rate (scenario-regions) | 1.3% | 66.4% |
+| 2. Growth Rate Plausibility | Pass rate (timesteps) | 87.4% | 83.1% |
+| 3. Regional Consistency | Pass rate (scenario × variable) | 0.0% | 0.0% |
+| 4. Physical Bounds Check | Pass rate (timesteps) | 96.3% | 98.4% |
+| 5. Hard Historical Constraints | Pass rate (scenarios × sub-checks) | 85.0% | 85.0% |
+| 6. Soft Future Constraints | Pass rate (scenarios × sub-checks) | 66.6% | 66.6% |
+| 7. Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
 
 ---
 
@@ -49,6 +50,53 @@ rate quantifies how much the model violates IAM accounting identities._
 | p95 | 16.4388 | 5.4734 |
 | p99 | 27.9085 | 12.8627 |
 
+### Example Failure
+
+_The median failing scenario (by mean error) is shown below._
+
+#### Example failure — predictions
+
+**Scenario:** POLES ENGAGE | EN_INDCi2030_1000f_COV_NDCp | TUR  
+**Parent variable:** Secondary Energy|Electricity  
+**Mean error:** 5.07%  (median failing scenario)
+
+| Year | Parent value | Sum of children | Residual | Error (%) | Status |
+| --- | --- | --- | --- | --- | --- |
+| 2025 | 1358.654 | 1319.613 | 39.041 | 2.87 | FAIL |
+| 2030 | 1661.869 | 1614.078 | 47.791 | 2.88 | FAIL |
+| 2035 | 1907.483 | 1984.364 | 76.88 | 4.03 | FAIL |
+| 2040 | 2329.942 | 2350.778 | 20.836 | 0.89 | PASS |
+| 2045 | 2785.21 | 2693.845 | 91.365 | 3.28 | FAIL |
+| 2050 | 3267.89 | 3140.077 | 127.814 | 3.91 | FAIL |
+| 2060 | 3853.846 | 3729.205 | 124.642 | 3.23 | FAIL |
+| 2070 | 4165.657 | 3880.078 | 285.58 | 6.86 | FAIL |
+| 2080 | 4229.573 | 3807.653 | 421.92 | 9.98 | FAIL |
+| 2090 | 4112.924 | 3726.239 | 386.685 | 9.4 | FAIL |
+| 2100 | 3893.672 | 3566.062 | 327.611 | 8.41 | FAIL |
+
+#### Example failure — ground truth
+
+**Scenario:** REMIND-MAgPIE 2.1-4.2 | EN_NPi2020_1200f | USA  
+**Parent variable:** Secondary Energy|Electricity  
+**Mean error:** 2.62%  (median failing scenario)
+
+| Year | Parent value | Sum of children | Residual | Error (%) | Status |
+| --- | --- | --- | --- | --- | --- |
+| 2015 | 16086.5 | 16086.4 | 0.1 | 0.0 | PASS |
+| 2020 | 16519.2 | 16518.6 | 0.6 | 0.0 | PASS |
+| 2025 | 17221.9 | 17206.5 | 15.4 | 0.09 | PASS |
+| 2030 | 18565.5 | 18457.7 | 107.8 | 0.58 | PASS |
+| 2035 | 19699.9 | 19371.3 | 328.6 | 1.67 | FAIL |
+| 2040 | 22477.9 | 21929.0 | 548.9 | 2.44 | FAIL |
+| 2045 | 25813.9 | 25103.4 | 710.5 | 2.75 | FAIL |
+| 2050 | 28971.6 | 28147.9 | 823.7 | 2.84 | FAIL |
+| 2055 | 31449.2 | 30534.3 | 914.9 | 2.91 | FAIL |
+| 2060 | 33373.1 | 32359.9 | 1013.2 | 3.04 | FAIL |
+| 2070 | 37139.5 | 35690.5 | 1449.0 | 3.9 | FAIL |
+| 2080 | 39949.9 | 37944.1 | 2005.8 | 5.02 | FAIL |
+| 2090 | 42797.4 | 40399.0 | 2398.4 | 5.6 | FAIL |
+| 2100 | 47154.5 | 44389.6 | 2764.9 | 5.86 | FAIL |
+
 ---
 
 ## 2. Growth Rate Plausibility
@@ -79,6 +127,26 @@ _(-4.29pp difference: predictions vs ground truth)_
 | C7 | 34694 | 3524 | 10.1600 |
 | C8 | 3097 | 280 | 9.0400 |
 | no-climate-assessment | 10070 | 480 | 4.7700 |
+
+### Example Violation
+
+_The most extreme growth rate violation is shown below._
+
+#### Example violation — predictions
+
+**Most extreme growth rate violation**
+
+| Variable | Scenario | Region | Category | Year (from) | Year (to) | Growth rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| Emissions\|CO2 | EN_INDCi2030_900f_NDCp | World | C3 | 2070 | 2080 | -2677.9061 |
+
+#### Example violation — ground truth
+
+**Most extreme growth rate violation**
+
+| Variable | Scenario | Region | Category | Year (from) | Year (to) | Growth rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Solar | EN_NPi2020_1000_COV | R10INDIA+ | C3 | 2020 | 2030 | +1719.5934 |
 
 ---
 
@@ -134,6 +202,26 @@ _Predictions show +2.138 pp more violations than ground truth._
 ### Violation Rate by Variable — Predictions vs Ground Truth
 
 ![Bounds violation rate pred vs GT](figures/bounds_violation_rate_pred_vs_gt.png)
+
+### Example Violation
+
+_The most extreme bounds violation is shown below._
+
+#### Example violation — predictions
+
+**Most extreme bounds violation**
+
+| Variable | Scenario | Region | Category | Year | Value | Units | Violation type |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity | CEMICS-2.0-CDR8 | World | C1 | 2100 | 831072.3969 | EJ/yr | Above empirical upper bound (373710.01) |
+
+#### Example violation — ground truth
+
+**Most extreme bounds violation**
+
+| Variable | Scenario | Region | Category | Year | Value | Units | Violation type |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity | EN_NPi2020_600f | World | C2 | 2100 | 829450.1 | EJ/yr | Above empirical upper bound (373710.01) |
 
 ---
 

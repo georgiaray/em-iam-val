@@ -39,7 +39,7 @@ GT_MISSING = "⚠ run validate.py with --ground_truth"
 
 def load(run_dir: Path, check: str, filename: str) -> Optional[pd.DataFrame]:
     path = run_dir / check / filename
-    return pd.read_csv(path) if path.exists() else None
+    return pd.read_csv(path, low_memory=False) if path.exists() else None
 
 
 def md_table(df: pd.DataFrame, fmt: Optional[dict] = None) -> str:
@@ -86,6 +86,102 @@ def _gt_missing_note(check_name: str) -> str:
     return (
         f"> **Ground truth results not found** for `{check_name}`. "
         f"Re-run `validate.py` with `--ground_truth` to generate comparison results."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Example failure helpers
+# ---------------------------------------------------------------------------
+
+def _example_sum_failure(te: pd.DataFrame, sc: pd.DataFrame, label: str) -> str:
+    """Show year-by-year breakdown for the median failing scenario."""
+    failing = sc[~sc["passed"]]
+    if failing.empty:
+        return f"_No failures found in {label}._"
+
+    median_err = failing["mean_error"].median()
+    idx = (failing["mean_error"] - median_err).abs().idxmin()
+    row = failing.loc[idx]
+
+    mask = (
+        (te["Model"]    == row["Model"]) &
+        (te["Scenario"] == row["Scenario"]) &
+        (te["Region"]   == row["Region"]) &
+        (te["parent_variable"] == row["parent_variable"])
+    )
+    ts = te[mask].sort_values("Year")
+    if ts.empty:
+        return f"_Could not locate timestep rows for example scenario in {label}._"
+
+    tbl = pd.DataFrame({
+        "Year":            ts["Year"].values,
+        "Parent value":    ts["Parent_Value"].round(3).values,
+        "Sum of children": ts["Children_Sum"].round(3).values,
+        "Residual":        ts["Residual"].round(3).values,
+        "Error (%)":       (ts["abs_error"] * 100).round(2).values,
+        "Status":          ts["Status"].values,
+    })
+    header = (
+        f"**Scenario:** {row['Model']} | {row['Scenario']} | {row['Region']}  \n"
+        f"**Parent variable:** {row['parent_variable']}  \n"
+        f"**Mean error:** {row['mean_error_pct']:.2f}%  (median failing scenario)"
+    )
+    return f"#### Example failure — {label}\n\n{header}\n\n" + md_table(
+        tbl, fmt={c: "{}" for c in tbl.columns}
+    )
+
+
+def _example_plausibility_failure(viol: pd.DataFrame, label: str) -> str:
+    """Show the most extreme growth rate violation."""
+    violations = viol[viol["violation"]].copy()
+    if violations.empty:
+        return f"_No violations found in {label}._"
+
+    violations["abs_gr"] = violations["Growth_Rate"].abs().replace([np.inf, -np.inf], np.nan)
+    worst = violations.dropna(subset=["abs_gr"]).nlargest(1, "abs_gr")
+    if worst.empty:
+        return f"_No finite-severity violations found in {label}._"
+
+    row = worst.iloc[0]
+    tbl = pd.DataFrame([{
+        "Variable":    row["Variable"],
+        "Scenario":    row.get("Scenario", "—"),
+        "Region":      row.get("Region", "—"),
+        "Category":    row.get("Scenario_Category", "—"),
+        "Year (from)": int(row["Year_From"]) if "Year_From" in row.index else "—",
+        "Year (to)":   int(row["Year"]),
+        "Growth rate": f"{row['Growth_Rate']:+.4f}",
+    }])
+    header = "**Most extreme growth rate violation**"
+    return f"#### Example violation — {label}\n\n{header}\n\n" + md_table(
+        tbl, fmt={c: "{}" for c in tbl.columns}
+    )
+
+
+def _example_bounds_failure(viol: pd.DataFrame, label: str) -> str:
+    """Show the most extreme bounds violation."""
+    if viol is None or viol.empty:
+        return f"_No violations found in {label}._"
+
+    worst = viol.nlargest(1, "Value") if (viol["above_upper"]).any() \
+        else viol.nsmallest(1, "Value")
+    if worst.empty:
+        return f"_No violations found in {label}._"
+
+    row = worst.iloc[0]
+    tbl = pd.DataFrame([{
+        "Variable":       row["Variable"],
+        "Scenario":       row.get("Scenario", "—"),
+        "Region":         row.get("Region", "—"),
+        "Category":       row.get("Scenario_Category", "—"),
+        "Year":           int(row["Year"]),
+        "Value":          round(float(row["Value"]), 4),
+        "Units":          row.get("Units", "—"),
+        "Violation type": row.get("Violation_Type", "—"),
+    }])
+    header = "**Most extreme bounds violation**"
+    return f"#### Example violation — {label}\n\n{header}\n\n" + md_table(
+        tbl, fmt={c: "{}" for c in tbl.columns}
     )
 
 
@@ -214,82 +310,143 @@ def _adapt_bounds(df: pd.DataFrame):
 # Overview
 # ---------------------------------------------------------------------------
 
+def _fmt_pr(val):
+    """Format a pass rate float as a percentage string."""
+    return f"{val:.1f}%" if val is not None else GT_MISSING
+
+
 def section_overview(run_dir: Path) -> str:
+    """
+    Single overview table covering all checks.
+    All metrics are expressed as pass rate (%) for consistency.
+    Inter-variable correlation is the one exception — it has no pass/fail threshold,
+    so it reports mean |Δr²| instead.
+    """
     rows = []
 
-    # Sum check
-    sc_raw = load(run_dir, "sum_check", "results.csv")
+    # 1. Sum check — pass rate
+    sc_raw    = load(run_dir, "sum_check", "results.csv")
     gt_sc_raw = load(run_dir, "sum_check_ground_truth", "results.csv")
     if sc_raw is not None:
-        sc, _ = _adapt_sum_results(sc_raw)
+        sc,    _ = _adapt_sum_results(sc_raw)
         gt_sc, _ = _adapt_sum_results(gt_sc_raw) if gt_sc_raw is not None else (None, None)
-        pr = 100 * sc["passed"].mean()
-        me = sc["mean_error_pct"].mean()
-        gt_pr = f'{100 * gt_sc["passed"].mean():.1f}%' if gt_sc is not None else GT_MISSING
-        gt_me = f'{gt_sc["mean_error_pct"].mean():.3f}%' if gt_sc is not None else GT_MISSING
-        rows += [
-            {"Check": "Hierarchy Sum Check", "Metric": "Scenario-region pass rate",
-             "Predictions": f"{pr:.1f}%", "Ground Truth": gt_pr},
-            {"Check": "", "Metric": "Mean relative error",
-             "Predictions": f"{me:.3f}%", "Ground Truth": gt_me},
-        ]
+        rows.append({
+            "Check":        "1. Hierarchy Sum Check",
+            "Metric":       "Pass rate (scenario-regions)",
+            "Predictions":  _fmt_pr(100 * sc["passed"].mean()),
+            "Ground Truth": _fmt_pr(100 * gt_sc["passed"].mean()) if gt_sc is not None else GT_MISSING,
+        })
 
-    # Plausibility
-    pl_raw = load(run_dir, "check_plausibility", "results.csv")
+    # 2. Growth rate plausibility — pass rate (= 1 − violation rate)
+    pl_raw    = load(run_dir, "check_plausibility", "results.csv")
     gt_pl_raw = load(run_dir, "check_plausibility_ground_truth", "results.csv")
     if pl_raw is not None:
         viol = _adapt_plausibility(pl_raw)
         if viol is not None:
-            vr = 100 * viol["violation"].mean()
-            gt_vr = GT_MISSING
+            gt_pr = GT_MISSING
             if gt_pl_raw is not None:
                 gt_viol = _adapt_plausibility(gt_pl_raw)
                 if gt_viol is not None:
-                    gt_vr = f'{100 * gt_viol["violation"].mean():.1f}%'
-            rows.append({"Check": "Growth Rate Plausibility", "Metric": "Timestep violation rate",
-                         "Predictions": f"{vr:.1f}%", "Ground Truth": gt_vr})
+                    gt_pr = _fmt_pr(100 * (1 - gt_viol["violation"].mean()))
+            rows.append({
+                "Check":        "2. Growth Rate Plausibility",
+                "Metric":       "Pass rate (timesteps)",
+                "Predictions":  _fmt_pr(100 * (1 - viol["violation"].mean())),
+                "Ground Truth": gt_pr,
+            })
 
-    # Regional
-    rc_raw = load(run_dir, "regional_consistency", "results.csv")
+    # 3. Regional consistency — pass rate
+    rc_raw    = load(run_dir, "regional_consistency", "results.csv")
     gt_rc_raw = load(run_dir, "regional_consistency_ground_truth", "results.csv")
     if rc_raw is not None:
         rc = _adapt_regional(rc_raw)
         if rc is not None:
-            pr = 100 * rc["passed"].mean()
             gt_pr = GT_MISSING
             if gt_rc_raw is not None:
                 gt_rc = _adapt_regional(gt_rc_raw)
                 if gt_rc is not None:
-                    gt_pr = f'{100 * gt_rc["passed"].mean():.1f}%'
-            rows.append({"Check": "Regional Consistency", "Metric": "Scenario × variable pass rate",
-                         "Predictions": f"{pr:.1f}%", "Ground Truth": gt_pr})
+                    gt_pr = _fmt_pr(100 * gt_rc["passed"].mean())
+            rows.append({
+                "Check":        "3. Regional Consistency",
+                "Metric":       "Pass rate (scenario × variable)",
+                "Predictions":  _fmt_pr(100 * rc["passed"].mean()),
+                "Ground Truth": gt_pr,
+            })
 
-    # Bounds
-    bc_raw = load(run_dir, "bounds_check", "results.csv")
+    # 4. Bounds check — pass rate (= 1 − violation rate)
+    bc_raw    = load(run_dir, "bounds_check", "results.csv")
     gt_bc_raw = load(run_dir, "bounds_check_ground_truth", "results.csv")
     if bc_raw is not None:
         bc, _ = _adapt_bounds(bc_raw)
         if bc is not None:
-            total = bc["n_timesteps"].sum()
+            total  = bc["n_timesteps"].sum()
             n_viol = bc["n_violations"].sum()
-            vr = 100 * n_viol / total if total else 0.0
-            gt_vr = GT_MISSING
+            pr     = 100 * (1 - n_viol / total) if total else 100.0
+            gt_pr  = GT_MISSING
             if gt_bc_raw is not None:
                 gt_bc, _ = _adapt_bounds(gt_bc_raw)
                 if gt_bc is not None:
                     gt_t = gt_bc["n_timesteps"].sum()
-                    gt_vr = f'{100 * gt_bc["n_violations"].sum() / gt_t:.2f}%' if gt_t else GT_MISSING
-            rows.append({"Check": "Physical Bounds Check", "Metric": "Timestep violation rate",
-                         "Predictions": f"{vr:.2f}%", "Ground Truth": gt_vr})
+                    gt_pr = _fmt_pr(100 * (1 - gt_bc["n_violations"].sum() / gt_t)) if gt_t else GT_MISSING
+            rows.append({
+                "Check":        "4. Physical Bounds Check",
+                "Metric":       "Pass rate (timesteps)",
+                "Predictions":  _fmt_pr(pr),
+                "Ground Truth": gt_pr,
+            })
 
-    # Correlations
+    # 5. Hard historical constraints — pass rate (PASS + WARN count as passing outer tolerance)
+    hh_raw    = load(run_dir, "hard_historical_constraints", "results.csv")
+    gt_hh_raw = load(run_dir, "hard_historical_constraints_ground_truth", "results.csv")
+    if hh_raw is not None:
+        n_pass = (hh_raw["status"].isin(["PASS", "WARN"])).sum()
+        total  = len(hh_raw)
+        gt_pr  = GT_MISSING
+        if gt_hh_raw is not None:
+            gt_pass  = (gt_hh_raw["status"].isin(["PASS", "WARN"])).sum()
+            gt_total = len(gt_hh_raw)
+            gt_pr    = _fmt_pr(100 * gt_pass / gt_total) if gt_total else GT_MISSING
+        rows.append({
+            "Check":        "5. Hard Historical Constraints",
+            "Metric":       "Pass rate (scenarios × sub-checks)",
+            "Predictions":  _fmt_pr(100 * n_pass / total) if total else "—",
+            "Ground Truth": gt_pr,
+        })
+
+    # 6. Soft future constraints — pass rate
+    sf_raw    = load(run_dir, "soft_future_constraints", "results.csv")
+    gt_sf_raw = load(run_dir, "soft_future_constraints_ground_truth", "results.csv")
+    if sf_raw is not None:
+        n_pass = (sf_raw["status"] == "PASS").sum()
+        total  = len(sf_raw)
+        gt_pr  = GT_MISSING
+        if gt_sf_raw is not None:
+            gt_pass  = (gt_sf_raw["status"] == "PASS").sum()
+            gt_total = len(gt_sf_raw)
+            gt_pr    = _fmt_pr(100 * gt_pass / gt_total) if gt_total else GT_MISSING
+        rows.append({
+            "Check":        "6. Soft Future Constraints",
+            "Metric":       "Pass rate (scenarios × sub-checks)",
+            "Predictions":  _fmt_pr(100 * n_pass / total) if total else "—",
+            "Ground Truth": gt_pr,
+        })
+
+    # 7. Inter-variable correlations — mean |Δr²| (no pass/fail threshold)
     corr_sum = load(run_dir, "inter_variable_correlation", "summary.csv")
     if corr_sum is not None and "Mean_abs_diff_r2" in corr_sum.columns:
         mean_diff = corr_sum["Mean_abs_diff_r2"].mean()
-        rows.append({"Check": "Inter-variable Correlations", "Metric": "Mean |Δr²| vs ground truth",
-                     "Predictions": f"{mean_diff:.4f}", "Ground Truth": "0.0000 (reference)"})
+        rows.append({
+            "Check":        "7. Inter-variable Correlations",
+            "Metric":       "Mean |Δr²| vs ground truth",
+            "Predictions":  f"{mean_diff:.4f}",
+            "Ground Truth": "0.0000 (reference)",
+        })
 
-    return md_table(pd.DataFrame(rows), fmt={c: "{}" for c in ["Check","Metric","Predictions","Ground Truth"]}) if rows else "_No check results found._"
+    if not rows:
+        return "_No check results found._"
+
+    df = pd.DataFrame(rows)
+    return md_table(df, fmt={c: "{}" for c in df.columns})
 
 
 # ---------------------------------------------------------------------------
@@ -379,6 +536,15 @@ def section_sum_check(run_dir: Path, fig_dir: Path) -> tuple:
         blocks.append("### Error Percentile Comparison — Predictions vs Ground Truth\n\n"
                       + md_table(tbl, fmt={c: "{}" for c in tbl.columns}))
 
+    # Example failures
+    blocks.append(
+        "### Example Failure\n\n"
+        "_The median failing scenario (by mean error) is shown below._\n\n"
+        + _example_sum_failure(te, sc, "predictions")
+    )
+    if gt_sc is not None and gt_te is not None:
+        blocks.append(_example_sum_failure(gt_te, gt_sc, "ground truth"))
+
     return "\n\n".join(blocks), figures
 
 
@@ -459,6 +625,15 @@ def section_plausibility(run_dir: Path, fig_dir: Path) -> tuple:
         cat = cat.sort_values("rate_%", ascending=False)
         cat.columns = ["Category", "Timesteps", "Violations", "Violation rate (%)"]
         blocks.append("### Violation Rate by Scenario Category\n\n" + md_table(cat))
+
+    # Example violations
+    blocks.append(
+        "### Example Violation\n\n"
+        "_The most extreme growth rate violation is shown below._\n\n"
+        + _example_plausibility_failure(viol, "predictions")
+    )
+    if gt_viol is not None:
+        blocks.append(_example_plausibility_failure(gt_viol, "ground truth"))
 
     return "\n\n".join(blocks), figures
 
@@ -644,6 +819,19 @@ def section_bounds(run_dir: Path, fig_dir: Path) -> tuple:
             rel = save_fig(fig, fig_dir, "bounds_violation_rate_pred_vs_gt")
             figures.append(rel)
             blocks.append(f"### Violation Rate by Variable — Predictions vs Ground Truth\n\n![Bounds violation rate pred vs GT]({rel})")
+
+    # Example violations
+    if viol is not None and not viol.empty:
+        blocks.append(
+            "### Example Violation\n\n"
+            "_The most extreme bounds violation is shown below._\n\n"
+            + _example_bounds_failure(viol, "predictions")
+        )
+    gt_viol_df = load(run_dir, "bounds_check_ground_truth", "results.csv")
+    if gt_viol_df is not None:
+        _, gt_viol_raw = _adapt_bounds(gt_viol_df)
+        if gt_viol_raw is not None and not gt_viol_raw.empty:
+            blocks.append(_example_bounds_failure(gt_viol_raw, "ground truth"))
 
     return "\n\n".join(blocks), figures
 
