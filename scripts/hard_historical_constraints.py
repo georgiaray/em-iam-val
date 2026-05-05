@@ -284,12 +284,33 @@ IDX = ["Model", "Scenario", "Region", "Scenario_Category"]
 # Per-constraint check logic
 # ---------------------------------------------------------------------------
 
-def _run_standard(long: pd.DataFrame, constraint: dict, available_years: set) -> pd.DataFrame:
+def _filter_world(long: pd.DataFrame, world_region: str) -> tuple[pd.DataFrame, bool]:
+    """
+    Filter to the global aggregate region.
+
+    AR6 vetting criteria are global values, so these checks must run against
+    the World aggregate rather than individual sub-regions. If the specified
+    world_region is not present in the data (e.g. a World-only dataset that
+    uses a different label), fall back to all rows and return a warning flag.
+    """
+    if world_region in long["Region"].values:
+        return long[long["Region"] == world_region].copy(), False
+    else:
+        return long.copy(), True  # True = fallback warning
+
+
+def _run_standard(long: pd.DataFrame, constraint: dict, available_years: set,
+                  world_region: str = "World") -> pd.DataFrame:
     """Run a single-year, single-expression constraint check."""
+    filtered, fallback = _filter_world(long, world_region)
+    if fallback:
+        print(f"  [WARN] Region '{world_region}' not found — running against all regions. "
+              f"Results may not match global reference values.")
+
     year   = _nearest_year(available_years, constraint["year"])
-    subset = long[
-        (long["Variable"].isin(constraint["required"])) &
-        (long["Year"] == year)
+    subset = filtered[
+        (filtered["Variable"].isin(constraint["required"])) &
+        (filtered["Year"] == year)
     ]
 
     wide = subset.pivot_table(
@@ -301,14 +322,19 @@ def _run_standard(long: pd.DataFrame, constraint: dict, available_years: set) ->
     return wide[IDX + ["computed_value", "year_used"]]
 
 
-def _run_pct_change(long: pd.DataFrame, constraint: dict, available_years: set) -> pd.DataFrame:
+def _run_pct_change(long: pd.DataFrame, constraint: dict, available_years: set,
+                    world_region: str = "World") -> pd.DataFrame:
     """Run the CO₂ 2010-2020 % change check."""
+    filtered, fallback = _filter_world(long, world_region)
+    if fallback:
+        print(f"  [WARN] Region '{world_region}' not found — running against all regions.")
+
     y0 = _nearest_year(available_years, constraint["year"][0])
     y1 = _nearest_year(available_years, constraint["year"][1])
 
     var = constraint["required"][0]
-    s0  = long[(long["Variable"] == var) & (long["Year"] == y0)][IDX + ["Value"]].rename(columns={"Value": "v0"})
-    s1  = long[(long["Variable"] == var) & (long["Year"] == y1)][IDX + ["Value"]].rename(columns={"Value": "v1"})
+    s0  = filtered[(filtered["Variable"] == var) & (filtered["Year"] == y0)][IDX + ["Value"]].rename(columns={"Value": "v0"})
+    s1  = filtered[(filtered["Variable"] == var) & (filtered["Year"] == y1)][IDX + ["Value"]].rename(columns={"Value": "v1"})
 
     merged = s0.merge(s1, on=IDX)
     merged["computed_value"] = (merged["v1"] - merged["v0"]) / merged["v0"].abs()
@@ -342,6 +368,7 @@ def run_constraint(
     constraint: dict,
     available_vars: set,
     available_years: set,
+    world_region: str = "World",
 ) -> tuple[pd.DataFrame | None, str, list[str]]:
     """
     Run a single constraint check.
@@ -358,9 +385,9 @@ def run_constraint(
 
     special = constraint.get("special")
     if special == "pct_change":
-        result = _run_pct_change(long, constraint, available_years)
+        result = _run_pct_change(long, constraint, available_years, world_region)
     else:
-        result = _run_standard(long, constraint, available_years)
+        result = _run_standard(long, constraint, available_years, world_region)
 
     result["status"] = result["computed_value"].apply(
         lambda v: _classify(
@@ -491,6 +518,15 @@ def main():
         "--use_ground_truth", action="store_true",
         help="Check AR6 ground truth instead of model predictions."
     )
+    parser.add_argument(
+        "--world_region", type=str, default="World",
+        help=(
+            "Region label used for the global aggregate (default: 'World'). "
+            "All checks are run against this region only, since the AR6 vetting "
+            "criteria are global values. If this label is not present in the data, "
+            "falls back to all regions with a warning."
+        )
+    )
     args = parser.parse_args()
 
     test_data, preds, y_test, targets = load_predictions(args.run_id)
@@ -506,9 +542,17 @@ def main():
     long = build_long(test_data, values, targets)
     available_vars  = set(long["Variable"].unique())
     available_years = set(long["Year"].unique())
+    available_regions = set(long["Region"].unique())
 
-    print(f"\n  Available years in dataset : {sorted(available_years)}")
-    print(f"  Available variables        : {len(available_vars)}")
+    print(f"\n  Available years in dataset    : {sorted(available_years)}")
+    print(f"  Available variables           : {len(available_vars)}")
+    print(f"  Available regions             : {len(available_regions)}")
+    print(f"  World region label            : '{args.world_region}'")
+    if args.world_region in available_regions:
+        n_world = long[long["Region"] == args.world_region]["Scenario"].nunique()
+        print(f"  World-level scenarios found   : {n_world}")
+    else:
+        print(f"  [WARN] '{args.world_region}' not in data — will fall back to all regions")
 
     # Run all constraints
     skipped         = []   # list of (name, missing_vars)
@@ -516,7 +560,9 @@ def main():
     constraints_run = []   # list of constraint dicts that ran
 
     for constraint in CONSTRAINTS:
-        result, status, missing = run_constraint(long, constraint, available_vars, available_years)
+        result, status, missing = run_constraint(
+            long, constraint, available_vars, available_years, args.world_region
+        )
         if status == "skip":
             print(f"\n  Skipping '{constraint['name']}': missing variables: {missing}")
             skipped.append((constraint["name"], missing))
