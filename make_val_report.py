@@ -39,7 +39,12 @@ GT_MISSING = "⚠ run validate.py with --ground_truth"
 
 def load(run_dir: Path, check: str, filename: str) -> Optional[pd.DataFrame]:
     path = run_dir / check / filename
-    return pd.read_csv(path, low_memory=False) if path.exists() else None
+    if not path.exists():
+        return None
+    try:
+        return pd.read_csv(path, low_memory=False)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()  # file exists but is empty (e.g. no results for this check)
 
 
 def md_table(df: pd.DataFrame, fmt: Optional[dict] = None) -> str:

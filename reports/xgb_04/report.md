@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 16:09
+**Generated:** 2026-05-05 20:11
 **Results:** `results/xgb_04/`
 
 ---
@@ -20,6 +20,10 @@
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
 | Pass rate (timesteps) | 87.4% | 83.1% |
+
+**3. Regional Consistency**
+
+_No complete regional groupings in this dataset._
 
 **4. Physical Bounds Check**
 
@@ -44,6 +48,15 @@
 | ch4_2040 | 99.2% | 0.8% | 99.2% | 0.8% |
 | co2_not_negative_2030 | 100.0% | 0.0% | 100.0% | 0.0% |
 | nuclear_electricity_2030 | 0.0% | 100.0% | 0.0% | 100.0% |
+
+**7. Verpoort Constraints (IAMC 2025)**
+
+| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- | --- |
+| hist_co2_eip | 94.3% | 0.0% | 5.7% | 94.7% | 0.0% | 5.3% |
+| hist_primary_coal | 81.6% | 0.0% | 18.4% | 81.1% | 0.0% | 18.9% |
+| hist_primary_gas | 99.6% | 0.0% | 0.4% | 99.2% | 0.0% | 0.8% |
+| hist_primary_oil | 98.8% | 0.0% | 1.2% | 98.8% | 0.0% | 1.2% |
 
 **7. Inter-variable Correlations**
 
@@ -109,26 +122,26 @@ _The median failing scenario (by mean error) is shown below._
 
 #### Example failure — ground truth
 
-**Scenario:** REMIND-MAgPIE 2.1-4.2 | EN_NPi2020_1200f | USA  
+**Scenario:** REMIND-MAgPIE 2.1-4.2 | EN_NPi2020_1000f_COV | R10MIDDLE_EAST  
 **Parent variable:** Secondary Energy|Electricity  
-**Mean error:** 2.62%  (median failing scenario)
+**Mean error:** 2.63%  (median failing scenario)
 
 | Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children | Parent value | Error (%) | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2015 | 324.1 | 4909.8 | 5872.0 | 98.0 | 1096.9 | 2640.7 | 278.1 | 136.4 | 730.4 | 16086.4 | 16086.5 | 0.0 | PASS |
-| 2020 | 316.9 | 4252.6 | 6742.9 | 112.0 | 1204.2 | 2007.0 | 189.9 | 417.4 | 1275.7 | 16518.6 | 16519.2 | 0.0 | PASS |
-| 2025 | 302.8 | 3343.2 | 6733.1 | 112.0 | 1325.7 | 1507.6 | 111.6 | 1422.5 | 2348.0 | 17206.5 | 17221.9 | 0.09 | PASS |
-| 2030 | 279.2 | 1884.3 | 5461.1 | 112.0 | 1385.9 | 1030.7 | 36.3 | 3751.9 | 4516.3 | 18457.7 | 18565.5 | 0.58 | PASS |
-| 2035 | 244.5 | 14.1 | 3220.2 | 112.0 | 1425.6 | 688.1 | 0.0 | 6353.8 | 7313.0 | 19371.3 | 19699.9 | 1.67 | FAIL |
-| 2040 | 198.4 | 9.2 | 1218.7 | 111.9 | 1445.0 | 479.7 | 0.0 | 8548.6 | 9917.5 | 21929.0 | 22477.9 | 2.44 | FAIL |
-| 2045 | 148.2 | 4.8 | 700.2 | 112.0 | 1447.3 | 295.5 | 0.0 | 10276.6 | 12118.8 | 25103.4 | 25813.9 | 2.75 | FAIL |
-| 2050 | 125.7 | 1.5 | 784.6 | 112.0 | 1437.5 | 148.6 | 0.0 | 11721.5 | 13816.5 | 28147.9 | 28971.6 | 2.84 | FAIL |
-| 2055 | 160.3 | 0.1 | 848.7 | 112.0 | 1420.2 | 56.2 | 0.0 | 12986.7 | 14950.1 | 30534.3 | 31449.2 | 2.91 | FAIL |
-| 2060 | 238.9 | 0.1 | 869.0 | 112.0 | 1399.5 | 22.2 | 0.0 | 13991.5 | 15726.7 | 32359.9 | 33373.1 | 3.04 | FAIL |
-| 2070 | 391.5 | 0.1 | 672.1 | 105.2 | 1351.8 | 1.7 | 0.0 | 15756.8 | 17411.3 | 35690.5 | 37139.5 | 3.9 | FAIL |
-| 2080 | 491.4 | 0.1 | 301.9 | 112.0 | 1307.3 | 0.0 | 0.0 | 17195.7 | 18535.7 | 37944.1 | 39949.9 | 5.02 | FAIL |
-| 2090 | 502.1 | 0.1 | 86.0 | 112.0 | 1285.0 | 0.0 | 0.0 | 18290.8 | 20123.0 | 40399.0 | 42797.4 | 5.6 | FAIL |
-| 2100 | 427.3 | 0.1 | 0.1 | 112.0 | 1276.3 | 0.0 | 0.0 | 20730.4 | 21843.4 | 44389.6 | 47154.5 | 5.86 | FAIL |
+| 2015 | 0.0 | 206.3 | 4075.6 | 33.1 | 238.9 | 22.4 | 661.1 | 13.0 | 20.0 | 5270.4 | 5270.3 | 0.0 | PASS |
+| 2020 | 3.9 | 102.9 | 4660.7 | 68.0 | 295.3 | 71.1 | 491.4 | 107.0 | 47.6 | 5847.9 | 5847.9 | 0.0 | PASS |
+| 2025 | 17.8 | 16.8 | 4911.3 | 97.0 | 296.7 | 118.5 | 317.1 | 525.9 | 171.4 | 6472.5 | 6474.9 | 0.04 | PASS |
+| 2030 | 28.2 | 14.5 | 4989.2 | 112.0 | 295.3 | 150.7 | 115.6 | 1535.1 | 488.5 | 7729.1 | 7749.2 | 0.26 | PASS |
+| 2035 | 29.7 | 1.3 | 4408.0 | 112.0 | 293.3 | 170.3 | 0.0 | 2881.3 | 1151.1 | 9047.0 | 9126.0 | 0.87 | PASS |
+| 2040 | 33.8 | 1.1 | 2891.7 | 111.9 | 291.2 | 178.7 | 0.0 | 4269.7 | 2327.6 | 10105.7 | 10288.0 | 1.77 | FAIL |
+| 2045 | 43.1 | 0.7 | 1100.3 | 112.0 | 289.1 | 177.0 | 0.0 | 5631.5 | 4106.3 | 11460.0 | 11786.5 | 2.77 | FAIL |
+| 2050 | 60.4 | 0.4 | 449.4 | 111.8 | 287.0 | 165.8 | 0.0 | 7086.2 | 6154.7 | 14315.7 | 14779.5 | 3.14 | FAIL |
+| 2055 | 88.9 | 0.2 | 551.1 | 112.0 | 284.8 | 145.7 | 0.0 | 8598.3 | 8343.8 | 18124.8 | 18719.2 | 3.18 | FAIL |
+| 2060 | 130.3 | 0.1 | 629.0 | 112.0 | 282.5 | 115.3 | 0.0 | 10188.3 | 10404.2 | 21861.7 | 22614.5 | 3.33 | FAIL |
+| 2070 | 269.0 | 0.1 | 577.7 | 112.0 | 277.6 | 44.5 | 0.0 | 13208.5 | 13420.3 | 27909.7 | 29120.3 | 4.16 | FAIL |
+| 2080 | 495.1 | 0.1 | 351.4 | 112.0 | 272.1 | 10.2 | 0.0 | 16472.2 | 15149.2 | 32862.3 | 34669.6 | 5.21 | FAIL |
+| 2090 | 718.1 | 0.1 | 113.3 | 108.5 | 265.4 | 0.7 | 0.0 | 18670.7 | 16791.0 | 36667.8 | 38983.0 | 5.94 | FAIL |
+| 2100 | 819.7 | 0.1 | 0.1 | 112.0 | 255.1 | 0.0 | 0.0 | 19949.2 | 17977.0 | 39113.2 | 41670.0 | 6.14 | FAIL |
 
 ---
 
@@ -188,7 +201,7 @@ _The most extreme growth rate violation is shown below._
 _Checks that predicted World values equal the sum of predicted subregion values
 (R5 / R6 / R10 groupings). Only applicable to datasets with regional breakdowns._
 
-_Regional consistency results not found. Run `validate.py` first, or skip if your run has no multi-region scenarios._
+_No complete regional groupings found in this dataset. The check requires all subregions in a grouping (R5/R6/R10) to have data for the same scenario-variable-year combinations. This dataset has partial regional coverage only._
 
 
 ---
@@ -283,7 +296,28 @@ _Skipped sub-checks (required variables absent): ccs_2030: ['Carbon Sequestratio
 
 ---
 
-## 7. Inter-variable Correlations
+## 7. Verpoort Constraints (IAMC 2025)
+
+_Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published
+successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data
+at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
+Status: PASS = within medium-concern bounds, WARN = within strong-concern bounds,
+FAIL = outside strong-concern (exclusion-level) bounds._
+
+| Sub-check | N | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- |
+| hist_co2_eip | 244 | 94.3000 | 5.7000 | 94.7000 | 5.3000 |
+| hist_primary_coal | 244 | 81.6000 | 18.4000 | 81.1000 | 18.9000 |
+| hist_primary_gas | 244 | 99.6000 | 0.4000 | 99.2000 | 0.8000 |
+| hist_primary_oil | 244 | 98.8000 | 1.2000 | 98.8000 | 1.2000 |
+
+
+_Not run: nearterm_ccs (['Carbon Sequestration|CCS']), longterm_ccs_2035 (['Carbon Sequestration|CCS']), longterm_ccs_2040 (['Carbon Sequestration|CCS'])_
+
+
+---
+
+## 8. Inter-variable Correlations
 
 _Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
 predictions against AR6 ground truth. A well-calibrated emulator should preserve
