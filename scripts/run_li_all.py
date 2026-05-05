@@ -289,6 +289,11 @@ def run_historical_constraints_pred(test_data, values, targets, run_id, check_mo
         print("=" * 60)
 
         long = build_long(test_data, values, targets, "predictions")
+
+        # Normalise to canonical units before running checks
+        units_map = check_mod.load_units_map(REPO_ROOT)
+        long = check_mod.normalize_to_canonical(long, units_map)
+
         available_vars  = set(long["Variable"].unique())
         available_years = set(long["Year"].unique())
 

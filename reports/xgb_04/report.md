@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 11:27
+**Generated:** 2026-05-05 11:33
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -279,8 +279,8 @@ validation family._
 | ch4_2020 | 89 | 88.8000 | 0.0000 | 11.2000 | 88.8000 | 11.2000 |
 | co2_change_2010_2020 | 18 | 100.0000 | 0.0000 | 0.0000 | 100.0000 | 0.0000 |
 | co2_eip_2020 | 89 | 53.9000 | 40.4000 | 5.6000 | 49.4000 | 6.7000 |
-| nuclear_energy_2020 | 89 | 0.0000 | 0.0000 | 100.0000 | 0.0000 | 100.0000 |
-| solar_wind_2020 | 89 | 0.0000 | 0.0000 | 100.0000 | 0.0000 | 100.0000 |
+| nuclear_energy_2020 | 89 | 69.7000 | 20.2000 | 10.1000 | 69.7000 | 10.1000 |
+| solar_wind_2020 | 89 | 55.1000 | 9.0000 | 36.0000 | 49.4000 | 34.8000 |
 
 
 _Skipped sub-checks (required variables absent from this run): ccs_2020, primary_energy_2020_

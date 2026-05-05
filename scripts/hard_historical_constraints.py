@@ -70,17 +70,182 @@ class _Tee:
 
 
 # ---------------------------------------------------------------------------
+# Unit normalisation
+# ---------------------------------------------------------------------------
+# All checks in this file use reference values expressed in canonical units:
+#   Energy   : EJ
+#   CO₂      : MtCO₂
+#   CH₄      : MtCH₄
+#
+# Before any check runs, the long-format data is normalised to these canonical
+# units via normalize_to_canonical(). This makes the framework agnostic to
+# whatever unit convention the source dataset uses (PJ, GJ, GtCO₂, etc.).
+#
+# Unit information is resolved in this order:
+#   1. A units_map passed explicitly (e.g. from a --units_config JSON file).
+#   2. ml-iam's UNITS_BY_OUTPUT config, if importable.
+#   3. Identity (no conversion) with a printed warning for any variable whose
+#      unit cannot be determined.
+
+# Canonical units for this framework
+CANONICAL_UNITS: dict[str, str] = {
+    "energy":   "EJ",
+    "co2":      "MtCO2",
+    "ch4":      "MtCH4",
+    "n2o":      "MtN2O",
+}
+
+# All known pairwise conversions: (from_unit, to_unit) -> multiplier
+_CONVERSIONS: dict[tuple[str, str], float] = {
+    # Energy
+    ("PJ",      "EJ"):      1e-3,
+    ("EJ",      "PJ"):      1e3,
+    ("PJ/yr",   "EJ/yr"):   1e-3,
+    ("EJ/yr",   "PJ/yr"):   1e3,
+    ("GJ",      "EJ"):      1e-9,
+    ("TJ",      "EJ"):      1e-6,
+    # Carbon
+    ("GtCO2",   "MtCO2"):   1e3,
+    ("MtCO2",   "GtCO2"):   1e-3,
+    ("GtCO2/yr","MtCO2/yr"):1e3,
+    ("MtC",     "MtCO2"):   44.0 / 12.0,   # carbon to CO2
+    ("GtC",     "MtCO2"):   44.0 / 12.0 * 1e3,
+    # Methane / other GHGs
+    ("GtCH4",   "MtCH4"):   1e3,
+    ("MtCH4",   "GtCH4"):   1e-3,
+    ("GtN2O",   "MtN2O"):   1e3,
+    ("MtN2O",   "GtN2O"):   1e-3,
+}
+
+# Which canonical unit applies to each variable (matched by prefix)
+_VAR_CANONICAL: list[tuple[str, str]] = [
+    ("Primary Energy",         "EJ"),
+    ("Secondary Energy",       "EJ"),
+    ("Final Energy",           "EJ"),
+    ("Emissions|CO2",          "MtCO2"),
+    ("Emissions|CH4",          "MtCH4"),
+    ("Emissions|N2O",          "MtN2O"),
+    ("Carbon Sequestration",   "MtCO2"),
+]
+
+
+def _canonical_unit_for(variable: str) -> Optional[str]:
+    """Return the canonical unit for a variable based on prefix matching."""
+    for prefix, unit in _VAR_CANONICAL:
+        if variable.startswith(prefix):
+            return unit
+    return None
+
+
+def _conversion_factor(from_unit: str, to_unit: str) -> Optional[float]:
+    """Return multiplier to convert from_unit -> to_unit, or None if unknown."""
+    f = from_unit.strip()
+    t = to_unit.strip()
+    # Strip /yr suffix for matching (direction doesn't affect magnitude)
+    f_base = f.rstrip("/yr").rstrip("/Yr")
+    t_base = t.rstrip("/yr").rstrip("/Yr")
+    if f == t or f_base == t_base:
+        return 1.0
+    return _CONVERSIONS.get((f, t)) or _CONVERSIONS.get((f_base, t_base))
+
+
+def load_units_map(repo_root: Path, units_config_path: Optional[str] = None) -> dict[str, str]:
+    """
+    Build a {variable: unit} mapping from available sources.
+
+    Priority:
+      1. units_config_path (JSON file: {"Variable|Name": "unit", ...})
+      2. ml-iam UNITS_BY_OUTPUT config (auto-detected from repo_root)
+      3. Empty dict (no conversions applied; warnings issued at check time)
+    """
+    if units_config_path:
+        import json
+        try:
+            with open(units_config_path) as f:
+                units = json.load(f)
+            print(f"  Units loaded from: {units_config_path}  ({len(units)} variables)")
+            return units
+        except Exception as e:
+            print(f"  [WARN] Could not load units config '{units_config_path}': {e}")
+
+    try:
+        from configs.data import UNITS_BY_OUTPUT
+        units = dict(UNITS_BY_OUTPUT)
+        print(f"  Units loaded from ml-iam configs.data  ({len(units)} variables)")
+        return units
+    except Exception:
+        pass
+
+    print("  [WARN] No unit configuration found. Checks will run on raw data units.")
+    return {}
+
+
+def normalize_to_canonical(
+    long: pd.DataFrame,
+    units_map: dict[str, str],
+) -> pd.DataFrame:
+    """
+    Convert all variable values in a long-format DataFrame to canonical units.
+
+    For each variable:
+      - Determine its canonical target unit from _VAR_CANONICAL prefix matching.
+      - Look up its actual unit in units_map.
+      - Apply the conversion factor if needed.
+      - Variables with unknown units or no conversion path are left unchanged
+        with a warning.
+
+    Returns a copy of the DataFrame with values converted in-place.
+    """
+    long = long.copy()
+    variables = long["Variable"].unique()
+    converted, unchanged, warned = [], [], []
+
+    for var in variables:
+        target_unit = _canonical_unit_for(var)
+        if target_unit is None:
+            unchanged.append(var)
+            continue
+
+        data_unit = units_map.get(var)
+        if data_unit is None:
+            warned.append(f"{var} (no unit in map)")
+            continue
+
+        factor = _conversion_factor(data_unit, target_unit)
+        if factor is None:
+            warned.append(f"{var} ({data_unit} → {target_unit}: no conversion known)")
+            continue
+
+        if factor != 1.0:
+            long.loc[long["Variable"] == var, "Value"] *= factor
+            converted.append(f"{var}: {data_unit} → {target_unit} (×{factor})")
+
+    if converted:
+        print(f"\n  Unit conversions applied ({len(converted)}):")
+        for c in converted:
+            print(f"    {c}")
+    if warned:
+        print(f"\n  [WARN] Could not convert {len(warned)} variable(s) — used as-is:")
+        for w in warned:
+            print(f"    {w}")
+
+    return long
+
+
+# ---------------------------------------------------------------------------
 # Constraint definitions
 # ---------------------------------------------------------------------------
 # Each entry describes one sub-check. Fields:
 #
-#   name         : str       - identifier used in output and reports
-#   label        : str       - human-readable description
-#   required     : list[str] - variables that must all be in the run's targets;
-#                              if any are missing the check is skipped
-#   compute_fn   : callable(wide_df) -> pd.Series, or None for special cases
-#                  wide_df has one row per scenario-region, columns are variables
-#   year         : int or list[int] - reference year(s) to extract
+#   name           : str       - identifier used in output and reports
+#   label          : str       - human-readable description
+#   required       : list[str] - variables that must all be in the run's targets;
+#                                if any are missing the check is skipped
+#   compute_fn     : callable(wide_df) -> pd.Series, or None for special cases
+#                    wide_df has one row per scenario-region, columns are variables
+#   year           : int or list[int] - reference year(s) to extract
+#   reference_unit : str - unit the reference bounds are expressed in
+#                    (the framework converts to the data's actual unit at runtime)
 #   outer_lower  : float or None - outer pass/fail lower bound
 #   outer_upper  : float or None - outer pass/fail upper bound
 #   inner_lower  : float or None - inner (IP range) lower bound; triggers WARN
@@ -109,17 +274,18 @@ _sw_ol,  _sw_oh,  _sw_il,  _sw_ih  = _tol_bounds(8.51,     0.50, 0.25)
 
 CONSTRAINTS: list[dict] = [
     {
-        "name":        "co2_eip_2020",
-        "label":       "CO₂ EIP emissions (2020)",
-        "required":    ["Emissions|CO2"],
-        "compute_fn":  lambda df: df["Emissions|CO2"],
-        "year":        2020,
-        "outer_lower": _co2_ol,
-        "outer_upper": _co2_oh,
-        "inner_lower": _co2_il,
-        "inner_upper": _co2_ih,
-        "unit":        "MtCO₂/yr",
-        "source":      "EDGAR v6 IPCC and CEDS, 2019 values",
+        "name":           "co2_eip_2020",
+        "label":          "CO₂ EIP emissions (2020)",
+        "required":       ["Emissions|CO2"],
+        "compute_fn":     lambda df: df["Emissions|CO2"],
+        "year":           2020,
+        "reference_unit": "MtCO2",
+        "outer_lower":    _co2_ol,
+        "outer_upper":    _co2_oh,
+        "inner_lower":    _co2_il,
+        "inner_upper":    _co2_ih,
+        "unit":           "MtCO₂/yr",
+        "source":         "EDGAR v6 IPCC and CEDS, 2019 values",
         "note": (
             "Reference value 37,646 MtCO₂/yr (±20% outer, ±10% IP range). "
             "Emissions|CO2 in IAM databases covers EIP (energy and industrial "
@@ -127,30 +293,32 @@ CONSTRAINTS: list[dict] = [
         ),
     },
     {
-        "name":        "ch4_2020",
-        "label":       "CH₄ emissions (2020)",
-        "required":    ["Emissions|CH4"],
-        "compute_fn":  lambda df: df["Emissions|CH4"],
-        "year":        2020,
-        "outer_lower": _ch4_ol,
-        "outer_upper": _ch4_oh,
-        "inner_lower": _ch4_il,
-        "inner_upper": _ch4_ih,
-        "unit":        "MtCH₄/yr",
-        "source":      "EDGAR v6 IPCC and CEDS, 2019 values",
+        "name":           "ch4_2020",
+        "label":          "CH₄ emissions (2020)",
+        "required":       ["Emissions|CH4"],
+        "compute_fn":     lambda df: df["Emissions|CH4"],
+        "year":           2020,
+        "reference_unit": "MtCH4",
+        "outer_lower":    _ch4_ol,
+        "outer_upper":    _ch4_oh,
+        "inner_lower":    _ch4_il,
+        "inner_upper":    _ch4_ih,
+        "unit":           "MtCH₄/yr",
+        "source":         "EDGAR v6 IPCC and CEDS, 2019 values",
         "note":        "Reference value 379 MtCH₄/yr (±20% outer and IP range).",
     },
     {
-        "name":        "co2_change_2010_2020",
-        "label":       "CO₂ EIP % change 2010–2020",
-        "required":    ["Emissions|CO2"],
-        "compute_fn":  None,   # handled via 'pct_change' special case
-        "year":        [2010, 2020],
-        "outer_lower": 0.0,    # stored as fraction, e.g. 0.0 = no change
-        "outer_upper": 0.50,   # 50% increase
-        "inner_lower": None,
-        "inner_upper": None,
-        "unit":        "fraction (0.30 = 30% increase)",
+        "name":           "co2_change_2010_2020",
+        "label":          "CO₂ EIP % change 2010–2020",
+        "required":       ["Emissions|CO2"],
+        "compute_fn":     None,   # handled via 'pct_change' special case
+        "year":           [2010, 2020],
+        "reference_unit": None,   # dimensionless ratio — no unit conversion needed
+        "outer_lower":    0.0,
+        "outer_upper":    0.50,
+        "inner_lower":    None,
+        "inner_upper":    None,
+        "unit":           "fraction (0.30 = 30% increase)",
         "source":      "EDGAR v6 IPCC and CEDS, 2019 values",
         "note": (
             "Checks that CO₂ EIP grew by 0–50% from 2010 to 2020. "
@@ -160,16 +328,17 @@ CONSTRAINTS: list[dict] = [
         "special":     "pct_change",
     },
     {
-        "name":        "ccs_2020",
-        "label":       "CCS from energy (2020)",
-        "required":    ["Carbon Sequestration|CCS"],
-        "compute_fn":  lambda df: df["Carbon Sequestration|CCS"],
-        "year":        2020,
-        "outer_lower": 0.0,
-        "outer_upper": 250.0,
-        "inner_lower": None,
-        "inner_upper": 100.0,
-        "unit":        "MtCO₂/yr",
+        "name":           "ccs_2020",
+        "label":          "CCS from energy (2020)",
+        "required":       ["Carbon Sequestration|CCS"],
+        "compute_fn":     lambda df: df["Carbon Sequestration|CCS"],
+        "year":           2020,
+        "reference_unit": "MtCO2",
+        "outer_lower":    0.0,
+        "outer_upper":    250.0,
+        "inner_lower":    None,
+        "inner_upper":    100.0,
+        "unit":           "MtCO₂/yr",
         "source":      "AR6 vetting criteria (Table 11)",
         "note": (
             "Range: 0–250 MtCO₂/yr (outer); 0–100 MtCO₂/yr (IP range upper). "
@@ -178,16 +347,17 @@ CONSTRAINTS: list[dict] = [
         ),
     },
     {
-        "name":        "primary_energy_2020",
-        "label":       "Primary energy total (2020)",
-        "required":    ["Primary Energy"],
-        "compute_fn":  lambda df: df["Primary Energy"],
-        "year":        2020,
-        "outer_lower": _pe_ol,
-        "outer_upper": _pe_oh,
-        "inner_lower": _pe_il,
-        "inner_upper": _pe_ih,
-        "unit":        "EJ",
+        "name":           "primary_energy_2020",
+        "label":          "Primary energy total (2020)",
+        "required":       ["Primary Energy"],
+        "compute_fn":     lambda df: df["Primary Energy"],
+        "year":           2020,
+        "reference_unit": "EJ",
+        "outer_lower":    _pe_ol,
+        "outer_upper":    _pe_oh,
+        "inner_lower":    _pe_il,
+        "inner_upper":    _pe_ih,
+        "unit":           "EJ",
         "source":      "IEA 2019; trends extrapolated to 2020",
         "note": (
             "Reference value 578 EJ (±20% outer, ±10% IP range). "
@@ -196,30 +366,32 @@ CONSTRAINTS: list[dict] = [
         ),
     },
     {
-        "name":        "nuclear_energy_2020",
-        "label":       "Nuclear primary energy (2020)",
-        "required":    ["Primary Energy|Nuclear"],
-        "compute_fn":  lambda df: df["Primary Energy|Nuclear"],
-        "year":        2020,
-        "outer_lower": _nuc_ol,
-        "outer_upper": _nuc_oh,
-        "inner_lower": _nuc_il,
-        "inner_upper": _nuc_ih,
-        "unit":        "EJ",
+        "name":           "nuclear_energy_2020",
+        "label":          "Nuclear primary energy (2020)",
+        "required":       ["Primary Energy|Nuclear"],
+        "compute_fn":     lambda df: df["Primary Energy|Nuclear"],
+        "year":           2020,
+        "reference_unit": "EJ",
+        "outer_lower":    _nuc_ol,
+        "outer_upper":    _nuc_oh,
+        "inner_lower":    _nuc_il,
+        "inner_upper":    _nuc_ih,
+        "unit":           "EJ",
         "source":      "IEA 2020 (direct equivalent accounting)",
         "note":        "Reference value 9.77 EJ (±30% outer, ±20% IP range).",
     },
     {
-        "name":        "solar_wind_2020",
-        "label":       "Solar + wind primary energy (2020)",
-        "required":    ["Primary Energy|Solar", "Primary Energy|Wind"],
-        "compute_fn":  lambda df: df["Primary Energy|Solar"] + df["Primary Energy|Wind"],
-        "year":        2020,
-        "outer_lower": _sw_ol,
-        "outer_upper": _sw_oh,
-        "inner_lower": _sw_il,
-        "inner_upper": _sw_ih,
-        "unit":        "EJ",
+        "name":           "solar_wind_2020",
+        "label":          "Solar + wind primary energy (2020)",
+        "required":       ["Primary Energy|Solar", "Primary Energy|Wind"],
+        "compute_fn":     lambda df: df["Primary Energy|Solar"] + df["Primary Energy|Wind"],
+        "year":           2020,
+        "reference_unit": "EJ",
+        "outer_lower":    _sw_ol,
+        "outer_upper":    _sw_oh,
+        "inner_lower":    _sw_il,
+        "inner_upper":    _sw_ih,
+        "unit":           "EJ",
         "source":      "IEA 2020, IRENA, BP, EMBERS; trends extrapolated to 2020",
         "note": (
             "Reference value 8.51 EJ (±50% outer, ±25% IP range). "
@@ -527,6 +699,16 @@ def main():
             "falls back to all regions with a warning."
         )
     )
+    parser.add_argument(
+        "--units_config", type=str, default=None,
+        help=(
+            "Path to a JSON file mapping variable names to units "
+            "(e.g. {\"Primary Energy|Nuclear\": \"PJ/yr\"}). "
+            "If not provided, the framework attempts to load units from ml-iam's "
+            "configs.data.UNITS_BY_OUTPUT. Variables whose units cannot be "
+            "determined are used as-is with a warning."
+        )
+    )
     args = parser.parse_args()
 
     test_data, preds, y_test, targets = load_predictions(args.run_id)
@@ -540,12 +722,10 @@ def main():
     sys.stdout = _Tee(out_dir / "report.txt")
 
     long = build_long(test_data, values, targets)
-    available_vars  = set(long["Variable"].unique())
-    available_years = set(long["Year"].unique())
     available_regions = set(long["Region"].unique())
 
-    print(f"\n  Available years in dataset    : {sorted(available_years)}")
-    print(f"  Available variables           : {len(available_vars)}")
+    print(f"\n  Available years in dataset    : {sorted(long['Year'].unique())}")
+    print(f"  Available variables           : {long['Variable'].nunique()}")
     print(f"  Available regions             : {len(available_regions)}")
     print(f"  World region label            : '{args.world_region}'")
     if args.world_region in available_regions:
@@ -553,6 +733,13 @@ def main():
         print(f"  World-level scenarios found   : {n_world}")
     else:
         print(f"  [WARN] '{args.world_region}' not in data — will fall back to all regions")
+
+    # Normalise all variables to canonical units before running any checks
+    units_map = load_units_map(REPO_ROOT, args.units_config)
+    long = normalize_to_canonical(long, units_map)
+
+    available_vars  = set(long["Variable"].unique())
+    available_years = set(long["Year"].unique())
 
     # Run all constraints
     skipped         = []   # list of (name, missing_vars)

@@ -37,6 +37,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -206,6 +207,105 @@ def _nearest_year(available: set, target: int) -> int:
 
 
 IDX = ["Model", "Scenario", "Region", "Scenario_Category"]
+
+
+# ---------------------------------------------------------------------------
+# Unit normalisation (shared logic — see hard_historical_constraints.py)
+# ---------------------------------------------------------------------------
+
+_CONVERSIONS: dict[tuple[str, str], float] = {
+    ("PJ",      "EJ"):      1e-3,
+    ("EJ",      "PJ"):      1e3,
+    ("PJ/yr",   "EJ/yr"):   1e-3,
+    ("EJ/yr",   "PJ/yr"):   1e3,
+    ("GJ",      "EJ"):      1e-9,
+    ("TJ",      "EJ"):      1e-6,
+    ("GtCO2",   "MtCO2"):   1e3,
+    ("MtCO2",   "GtCO2"):   1e-3,
+    ("GtCO2/yr","MtCO2/yr"):1e3,
+    ("MtC",     "MtCO2"):   44.0 / 12.0,
+    ("GtC",     "MtCO2"):   44.0 / 12.0 * 1e3,
+    ("GtCH4",   "MtCH4"):   1e3,
+    ("MtCH4",   "GtCH4"):   1e-3,
+    ("GtN2O",   "MtN2O"):   1e3,
+    ("MtN2O",   "GtN2O"):   1e-3,
+}
+
+_VAR_CANONICAL: list[tuple[str, str]] = [
+    ("Primary Energy",         "EJ"),
+    ("Secondary Energy",       "EJ"),
+    ("Final Energy",           "EJ"),
+    ("Emissions|CO2",          "MtCO2"),
+    ("Emissions|CH4",          "MtCH4"),
+    ("Emissions|N2O",          "MtN2O"),
+    ("Carbon Sequestration",   "MtCO2"),
+]
+
+
+def _canonical_unit_for(variable: str) -> Optional[str]:
+    for prefix, unit in _VAR_CANONICAL:
+        if variable.startswith(prefix):
+            return unit
+    return None
+
+
+def _conversion_factor(from_unit: str, to_unit: str) -> Optional[float]:
+    f, t = from_unit.strip(), to_unit.strip()
+    f_base = f.rstrip("/yr")
+    t_base = t.rstrip("/yr")
+    if f == t or f_base == t_base:
+        return 1.0
+    return _CONVERSIONS.get((f, t)) or _CONVERSIONS.get((f_base, t_base))
+
+
+def load_units_map(repo_root: Path, units_config_path: Optional[str] = None) -> dict[str, str]:
+    if units_config_path:
+        import json
+        try:
+            with open(units_config_path) as fh:
+                units = json.load(fh)
+            print(f"  Units loaded from: {units_config_path}  ({len(units)} variables)")
+            return units
+        except Exception as e:
+            print(f"  [WARN] Could not load units config '{units_config_path}': {e}")
+    try:
+        from configs.data import UNITS_BY_OUTPUT
+        units = dict(UNITS_BY_OUTPUT)
+        print(f"  Units loaded from ml-iam configs.data  ({len(units)} variables)")
+        return units
+    except Exception:
+        pass
+    print("  [WARN] No unit configuration found. Checks will run on raw data units.")
+    return {}
+
+
+def normalize_to_canonical(long: pd.DataFrame, units_map: dict[str, str]) -> pd.DataFrame:
+    long = long.copy()
+    converted, warned = [], []
+    for var in long["Variable"].unique():
+        target_unit = _canonical_unit_for(var)
+        if target_unit is None:
+            continue
+        data_unit = units_map.get(var)
+        if data_unit is None:
+            warned.append(f"{var} (no unit in map)")
+            continue
+        factor = _conversion_factor(data_unit, target_unit)
+        if factor is None:
+            warned.append(f"{var} ({data_unit} → {target_unit}: no conversion known)")
+            continue
+        if factor != 1.0:
+            long.loc[long["Variable"] == var, "Value"] *= factor
+            converted.append(f"{var}: {data_unit} → {target_unit} (×{factor})")
+    if converted:
+        print(f"\n  Unit conversions applied ({len(converted)}):")
+        for c in converted:
+            print(f"    {c}")
+    if warned:
+        print(f"\n  [WARN] Could not convert {len(warned)} variable(s) — used as-is:")
+        for w in warned:
+            print(f"    {w}")
+    return long
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +506,14 @@ def main():
             "if this label is absent."
         )
     )
+    parser.add_argument(
+        "--units_config", type=str, default=None,
+        help=(
+            "Path to a JSON file mapping variable names to units. "
+            "If not provided, attempts to load from ml-iam's configs.data. "
+            "Variables with unknown units are used as-is with a warning."
+        )
+    )
     args = parser.parse_args()
 
     test_data, preds, y_test, targets = load_predictions(args.run_id)
@@ -419,18 +527,23 @@ def main():
     sys.stdout = _Tee(out_dir / "report.txt")
 
     long = build_long(test_data, values, targets)
-    available_vars   = set(long["Variable"].unique())
-    available_years  = set(long["Year"].unique())
     available_regions = set(long["Region"].unique())
 
-    print(f"\n  Available years in dataset    : {sorted(available_years)}")
-    print(f"  Available variables           : {len(available_vars)}")
+    print(f"\n  Available years in dataset    : {sorted(long['Year'].unique())}")
+    print(f"  Available variables           : {long['Variable'].nunique()}")
     print(f"  World region label            : '{args.world_region}'")
     if args.world_region in available_regions:
         n_world = long[long["Region"] == args.world_region]["Scenario"].nunique()
         print(f"  World-level scenarios found   : {n_world}")
     else:
         print(f"  [WARN] '{args.world_region}' not in data — will fall back to all regions")
+
+    # Normalise all variables to canonical units before running any checks
+    units_map = load_units_map(REPO_ROOT, args.units_config)
+    long = normalize_to_canonical(long, units_map)
+
+    available_vars  = set(long["Variable"].unique())
+    available_years = set(long["Year"].unique())
 
     skipped         = []
     results         = []
