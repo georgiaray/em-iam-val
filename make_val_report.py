@@ -94,7 +94,7 @@ def _gt_missing_note(check_name: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _example_sum_failure(te: pd.DataFrame, sc: pd.DataFrame, label: str) -> str:
-    """Show year-by-year breakdown for the median failing scenario."""
+    """Show year-by-year breakdown with individual children for the median failing scenario."""
     failing = sc[~sc["passed"]]
     if failing.empty:
         return f"_No failures found in {label}._"
@@ -113,14 +113,24 @@ def _example_sum_failure(te: pd.DataFrame, sc: pd.DataFrame, label: str) -> str:
     if ts.empty:
         return f"_Could not locate timestep rows for example scenario in {label}._"
 
-    tbl = pd.DataFrame({
-        "Year":            ts["Year"].values,
-        "Parent value":    ts["Parent_Value"].round(3).values,
-        "Sum of children": ts["Children_Sum"].round(3).values,
-        "Residual":        ts["Residual"].round(3).values,
-        "Error (%)":       (ts["abs_error"] * 100).round(2).values,
-        "Status":          ts["Status"].values,
-    })
+    # Identify child variable columns (anything that's not a metadata column)
+    meta_cols = {"Model","Scenario","Region","Scenario_Category","Year","Parent",
+                 "Parent_Value","Children_Sum","Residual","Tolerance","Status",
+                 "abs_error","passed_timestep","parent_variable","total",
+                 "sum_components","zero_total"}
+    child_cols = [c for c in ts.columns if c not in meta_cols]
+
+    tbl_dict = {"Year": ts["Year"].values}
+    # Individual children (use short name after last |)
+    for child in child_cols:
+        short = child.split("|")[-1].strip()
+        tbl_dict[short] = ts[child].round(3).values
+    tbl_dict["Sum of children"] = ts["Children_Sum"].round(3).values
+    tbl_dict["Parent value"]    = ts["Parent_Value"].round(3).values
+    tbl_dict["Error (%)"]       = (ts["abs_error"] * 100).round(2).values
+    tbl_dict["Status"]          = ts["Status"].values
+
+    tbl = pd.DataFrame(tbl_dict)
     header = (
         f"**Scenario:** {row['Model']} | {row['Scenario']} | {row['Region']}  \n"
         f"**Parent variable:** {row['parent_variable']}  \n"
@@ -324,7 +334,7 @@ def section_overview(run_dir: Path) -> str:
     """
     rows = []
 
-    # 1. Sum check — pass rate
+    # 1. Sum check — pass rate + mean error
     sc_raw    = load(run_dir, "sum_check", "results.csv")
     gt_sc_raw = load(run_dir, "sum_check_ground_truth", "results.csv")
     if sc_raw is not None:
@@ -332,9 +342,19 @@ def section_overview(run_dir: Path) -> str:
         gt_sc, _ = _adapt_sum_results(gt_sc_raw) if gt_sc_raw is not None else (None, None)
         rows.append({
             "Check":        "1. Hierarchy Sum Check",
-            "Metric":       "Pass rate (scenario-regions)",
-            "Predictions":  _fmt_pr(100 * sc["passed"].mean()),
-            "Ground Truth": _fmt_pr(100 * gt_sc["passed"].mean()) if gt_sc is not None else GT_MISSING,
+            "Metric":       "Pass rate",
+            "Pass (%)":     _fmt_pr(100 * sc["passed"].mean()),
+            "Fail (%)":     _fmt_pr(100 * (1 - sc["passed"].mean())),
+            "GT Pass (%)":  _fmt_pr(100 * gt_sc["passed"].mean()) if gt_sc is not None else GT_MISSING,
+            "GT Fail (%)":  _fmt_pr(100 * (1 - gt_sc["passed"].mean())) if gt_sc is not None else GT_MISSING,
+        })
+        me = sc["mean_error_pct"].mean()
+        gt_me = f'{gt_sc["mean_error_pct"].mean():.3f}%' if gt_sc is not None else GT_MISSING
+        rows.append({
+            "Check":        "",
+            "Metric":       "Mean relative error",
+            "Pass (%)":     f"{me:.3f}%",
+            "GT Pass (%)":  gt_me,
         })
 
     # 2. Growth rate plausibility — pass rate (= 1 − violation rate)
@@ -351,8 +371,9 @@ def section_overview(run_dir: Path) -> str:
             rows.append({
                 "Check":        "2. Growth Rate Plausibility",
                 "Metric":       "Pass rate (timesteps)",
-                "Predictions":  _fmt_pr(100 * (1 - viol["violation"].mean())),
-                "Ground Truth": gt_pr,
+                "Pass (%)":     _fmt_pr(100 * (1 - viol["violation"].mean())),
+                "Fail (%)":     _fmt_pr(100 * viol["violation"].mean()),
+                "GT Pass (%)":  gt_pr,
             })
 
     # 3. Regional consistency — pass rate
@@ -369,8 +390,9 @@ def section_overview(run_dir: Path) -> str:
             rows.append({
                 "Check":        "3. Regional Consistency",
                 "Metric":       "Pass rate (scenario × variable)",
-                "Predictions":  _fmt_pr(100 * rc["passed"].mean()),
-                "Ground Truth": gt_pr,
+                "Pass (%)":     _fmt_pr(100 * rc["passed"].mean()),
+                "Fail (%)":     _fmt_pr(100 * (1 - rc["passed"].mean())),
+                "GT Pass (%)":  gt_pr,
             })
 
     # 4. Bounds check — pass rate (= 1 − violation rate)
@@ -391,61 +413,98 @@ def section_overview(run_dir: Path) -> str:
             rows.append({
                 "Check":        "4. Physical Bounds Check",
                 "Metric":       "Pass rate (timesteps)",
-                "Predictions":  _fmt_pr(pr),
-                "Ground Truth": gt_pr,
+                "Pass (%)":     _fmt_pr(pr),
+                "Fail (%)":     _fmt_pr(100 - pr),
+                "GT Pass (%)":  gt_pr,
             })
 
-    # 5. Hard historical constraints — pass rate (PASS + WARN count as passing outer tolerance)
+    # 5 & 6. Constraint checks — worst and best sub-check, with Pass/Warn/Fail columns
+    def _constraint_rows(check_num, check_name, label, raw, gt_raw, has_warn):
+        if raw is None or raw.empty:
+            return
+        by_c = raw.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
+        for col in ("PASS", "WARN", "FAIL"):
+            if col not in by_c.columns:
+                by_c[col] = 0
+        by_c["total"] = by_c["PASS"] + by_c.get("WARN", 0) + by_c["FAIL"]
+        by_c["pass_rate"] = (by_c["PASS"] + by_c.get("WARN", 0)) / by_c["total"].replace(0, np.nan)
+
+        gt_lookup = {}
+        if gt_raw is not None and not gt_raw.empty:
+            gt_by_c = gt_raw.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
+            for col in ("PASS", "WARN", "FAIL"):
+                if col not in gt_by_c.columns:
+                    gt_by_c[col] = 0
+            gt_by_c["total"] = gt_by_c["PASS"] + gt_by_c.get("WARN", 0) + gt_by_c["FAIL"]
+            for _, r in gt_by_c.iterrows():
+                t = r["total"]
+                gt_lookup[r["constraint_name"]] = {
+                    "PASS": f"{100*r['PASS']/t:.1f}%" if t else "—",
+                    "WARN": f"{100*r.get('WARN',0)/t:.1f}%" if t else "—",
+                    "FAIL": f"{100*r['FAIL']/t:.1f}%" if t else "—",
+                }
+
+        best  = by_c.loc[by_c["pass_rate"].idxmax()]
+        worst = by_c.loc[by_c["pass_rate"].idxmin()]
+
+        for i, (sub_row, tag) in enumerate([(best, "best"), (worst, "worst")]):
+            c = sub_row["constraint_name"]
+            t = sub_row["total"]
+            gt = gt_lookup.get(c, {})
+            entry = {
+                "Check":       f"{check_num}. {label}" if i == 0 else "",
+                "Sub-check":   f"{c} ({tag})",
+                "Pass (%)":    f"{100*sub_row['PASS']/t:.1f}%" if t else "—",
+                "Warn (%)":    f"{100*sub_row.get('WARN',0)/t:.1f}%" if (t and has_warn) else "—",
+                "Fail (%)":    f"{100*sub_row['FAIL']/t:.1f}%" if t else "—",
+                "GT Pass (%)": gt.get("PASS", GT_MISSING),
+                "GT Warn (%)": gt.get("WARN", "—") if has_warn else "—",
+                "GT Fail (%)": gt.get("FAIL", GT_MISSING),
+            }
+            rows.append(entry)
+
     hh_raw    = load(run_dir, "hard_historical_constraints", "results.csv")
     gt_hh_raw = load(run_dir, "hard_historical_constraints_ground_truth", "results.csv")
-    if hh_raw is not None:
-        n_pass = (hh_raw["status"].isin(["PASS", "WARN"])).sum()
-        total  = len(hh_raw)
-        gt_pr  = GT_MISSING
-        if gt_hh_raw is not None:
-            gt_pass  = (gt_hh_raw["status"].isin(["PASS", "WARN"])).sum()
-            gt_total = len(gt_hh_raw)
-            gt_pr    = _fmt_pr(100 * gt_pass / gt_total) if gt_total else GT_MISSING
-        rows.append({
-            "Check":        "5. Hard Historical Constraints",
-            "Metric":       "Pass rate (scenarios × sub-checks)",
-            "Predictions":  _fmt_pr(100 * n_pass / total) if total else "—",
-            "Ground Truth": gt_pr,
-        })
+    if hh_raw is not None and not hh_raw.empty:
+        _constraint_rows("5", "hard_historical_constraints", "Hard Historical Constraints",
+                         hh_raw, gt_hh_raw, has_warn=True)
 
-    # 6. Soft future constraints — pass rate
     sf_raw    = load(run_dir, "soft_future_constraints", "results.csv")
     gt_sf_raw = load(run_dir, "soft_future_constraints_ground_truth", "results.csv")
-    if sf_raw is not None:
-        n_pass = (sf_raw["status"] == "PASS").sum()
-        total  = len(sf_raw)
-        gt_pr  = GT_MISSING
-        if gt_sf_raw is not None:
-            gt_pass  = (gt_sf_raw["status"] == "PASS").sum()
-            gt_total = len(gt_sf_raw)
-            gt_pr    = _fmt_pr(100 * gt_pass / gt_total) if gt_total else GT_MISSING
-        rows.append({
-            "Check":        "6. Soft Future Constraints",
-            "Metric":       "Pass rate (scenarios × sub-checks)",
-            "Predictions":  _fmt_pr(100 * n_pass / total) if total else "—",
-            "Ground Truth": gt_pr,
-        })
+    if sf_raw is not None and not sf_raw.empty:
+        _constraint_rows("6", "soft_future_constraints", "Soft Future Constraints",
+                         sf_raw, gt_sf_raw, has_warn=False)
 
     # 7. Inter-variable correlations — mean |Δr²| (no pass/fail threshold)
     corr_sum = load(run_dir, "inter_variable_correlation", "summary.csv")
     if corr_sum is not None and "Mean_abs_diff_r2" in corr_sum.columns:
         mean_diff = corr_sum["Mean_abs_diff_r2"].mean()
         rows.append({
-            "Check":        "7. Inter-variable Correlations",
-            "Metric":       "Mean |Δr²| vs ground truth",
-            "Predictions":  f"{mean_diff:.4f}",
-            "Ground Truth": "0.0000 (reference)",
+            "Check":   "7. Inter-variable Correlations",
+            "Metric":  "Mean |Δr²| vs ground truth",
+            "Pass (%)": f"{mean_diff:.4f}",
+            "GT Pass (%)": "0.0000 (reference)",
         })
 
     if not rows:
         return "_No check results found._"
 
     df = pd.DataFrame(rows)
+
+    # Canonical column order — columns absent from some rows are filled with "—"
+    ordered_cols = [
+        "Check", "Sub-check", "Metric",
+        "Pass (%)", "Warn (%)", "Fail (%)",
+        "GT Pass (%)", "GT Warn (%)", "GT Fail (%)",
+    ]
+    for col in ordered_cols:
+        if col not in df.columns:
+            df[col] = "—"
+    df = df[ordered_cols].fillna("—")
+
+    # Drop columns that are entirely "—" (e.g. Warn when no check uses it)
+    df = df.loc[:, (df != "—").any(axis=0)]
+
     return md_table(df, fmt={c: "{}" for c in df.columns})
 
 
@@ -650,8 +709,15 @@ def section_regional(run_dir: Path, fig_dir: Path) -> tuple:
         return ("_Regional consistency results not found. Run `validate.py` first, "
                 "or skip if your run has no multi-region scenarios._\n"), []
 
+    # Empty file means the check ran but found no complete regional groupings
+    if rc_raw.empty:
+        return ("_No complete regional groupings found in this dataset. The check requires "
+                "all subregions in a grouping (R5/R6/R10) to have data for the same "
+                "scenario-variable-year combinations. This dataset has partial regional "
+                "coverage only._\n"), []
+
     rc    = _adapt_regional(rc_raw)
-    gt_rc = _adapt_regional(gt_rc_raw) if gt_rc_raw is not None else None
+    gt_rc = _adapt_regional(gt_rc_raw) if (gt_rc_raw is not None and not gt_rc_raw.empty) else None
 
     blocks  = [] if gt_rc is not None else [_gt_missing_note("regional_consistency")]
     figures = []

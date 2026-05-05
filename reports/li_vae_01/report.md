@@ -1,21 +1,24 @@
 # Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-05 15:51
+**Generated:** 2026-05-05 16:03
 **Results:** `results/li_vae_01/`
 
 ---
 
 ## Overview
 
-| Check | Metric | Predictions | Ground Truth |
-| --- | --- | --- | --- |
-| 1. Hierarchy Sum Check | Pass rate (scenario-regions) | 0.0% | 58.9% |
-| 2. Growth Rate Plausibility | Pass rate (timesteps) | 78.1% | 88.5% |
-| 4. Physical Bounds Check | Pass rate (timesteps) | 76.0% | 98.6% |
-| 5. Hard Historical Constraints | Pass rate (scenarios × sub-checks) | 99.8% | 99.8% |
-| 6. Soft Future Constraints | Pass rate (scenarios × sub-checks) | 96.6% | 92.7% |
-| 7. Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.1383 | 0.0000 (reference) |
+| Check | Sub-check | Metric | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1. Hierarchy Sum Check | — | Pass rate | 0.0% | — | 100.0% | 58.9% | — | 41.1% |
+|  | — | Mean relative error | 2019.856% | — | — | 10.095% | — | — |
+| 2. Growth Rate Plausibility | — | Pass rate (timesteps) | 78.1% | — | 21.9% | 88.5% | — | — |
+| 4. Physical Bounds Check | — | Pass rate (timesteps) | 76.0% | — | 24.0% | 98.6% | — | — |
+| 5. Hard Historical Constraints | ccs_2020 (best) | — | 96.7% | 3.0% | 0.2% | 98.2% | 1.4% | 0.3% |
+|  | ccs_2020 (worst) | — | 96.7% | 3.0% | 0.2% | 98.2% | 1.4% | 0.3% |
+| 6. Soft Future Constraints | nuclear_electricity_2030 (best) | — | 97.8% | — | 2.2% | 94.1% | — | 5.9% |
+|  | ccs_2030 (worst) | — | 95.3% | — | 4.7% | 91.3% | — | 8.7% |
+| 7. Inter-variable Correlations | — | Mean \|Δr²\| vs ground truth | 0.1383 | — | — | 0.0000 (reference) | — | — |
 
 ---
 
@@ -59,17 +62,17 @@ _The median failing scenario (by mean error) is shown below._
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 1495.91%  (median failing scenario)
 
-| Year | Parent value | Sum of children | Residual | Error (%) | Status |
-| --- | --- | --- | --- | --- | --- |
-| 2020 | 2.437 | 193.773 | 191.336 | 7852.31 | FAIL |
-| 2030 | 14.544 | 265.316 | 250.772 | 1724.26 | FAIL |
-| 2040 | 29.574 | 400.253 | 370.679 | 1253.41 | FAIL |
-| 2050 | 61.003 | 503.205 | 442.202 | 724.88 | FAIL |
-| 2060 | 93.905 | 622.745 | 528.84 | 563.16 | FAIL |
-| 2070 | 138.044 | 757.403 | 619.359 | 448.67 | FAIL |
-| 2080 | 186.446 | 884.654 | 698.208 | 374.48 | FAIL |
-| 2090 | 249.8 | 981.976 | 732.175 | 293.1 | FAIL |
-| 2100 | 324.121 | 1066.019 | 741.898 | 228.9 | FAIL |
+| Year | Sum of children | Parent value | Error (%) | Status |
+| --- | --- | --- | --- | --- |
+| 2020 | 193.773 | 2.437 | 7852.31 | FAIL |
+| 2030 | 265.316 | 14.544 | 1724.26 | FAIL |
+| 2040 | 400.253 | 29.574 | 1253.41 | FAIL |
+| 2050 | 503.205 | 61.003 | 724.88 | FAIL |
+| 2060 | 622.745 | 93.905 | 563.16 | FAIL |
+| 2070 | 757.403 | 138.044 | 448.67 | FAIL |
+| 2080 | 884.654 | 186.446 | 374.48 | FAIL |
+| 2090 | 981.976 | 249.8 | 293.1 | FAIL |
+| 2100 | 1066.019 | 324.121 | 228.9 | FAIL |
 
 #### Example failure — ground truth
 
@@ -77,18 +80,18 @@ _The median failing scenario (by mean error) is shown below._
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 2.13%  (median failing scenario)
 
-| Year | Parent value | Sum of children | Residual | Error (%) | Status |
-| --- | --- | --- | --- | --- | --- |
-| 2010 | 77.793 | 77.793 | 0.0 | 0.0 | PASS |
-| 2020 | 102.874 | 102.864 | 0.01 | 0.01 | PASS |
-| 2030 | 126.486 | 125.693 | 0.793 | 0.63 | PASS |
-| 2040 | 162.408 | 159.524 | 2.884 | 1.78 | FAIL |
-| 2050 | 197.675 | 193.188 | 4.487 | 2.27 | FAIL |
-| 2060 | 224.688 | 219.051 | 5.637 | 2.51 | FAIL |
-| 2070 | 256.11 | 248.808 | 7.302 | 2.85 | FAIL |
-| 2080 | 286.64 | 277.374 | 9.266 | 3.23 | FAIL |
-| 2090 | 307.884 | 296.412 | 11.472 | 3.73 | FAIL |
-| 2100 | 334.831 | 320.401 | 14.43 | 4.31 | FAIL |
+| Year | Sum of children | Parent value | Error (%) | Status |
+| --- | --- | --- | --- | --- |
+| 2010 | 77.793 | 77.793 | 0.0 | PASS |
+| 2020 | 102.864 | 102.874 | 0.01 | PASS |
+| 2030 | 125.693 | 126.486 | 0.63 | PASS |
+| 2040 | 159.524 | 162.408 | 1.78 | FAIL |
+| 2050 | 193.188 | 197.675 | 2.27 | FAIL |
+| 2060 | 219.051 | 224.688 | 2.51 | FAIL |
+| 2070 | 248.808 | 256.11 | 2.85 | FAIL |
+| 2080 | 277.374 | 286.64 | 3.23 | FAIL |
+| 2090 | 296.412 | 307.884 | 3.73 | FAIL |
+| 2100 | 320.401 | 334.831 | 4.31 | FAIL |
 
 ---
 

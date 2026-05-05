@@ -84,8 +84,10 @@ def run_sum_check(
     pivot["Status"]       = np.where(pivot["residual"] <= pivot["tolerance"], "PASS", "FAIL")
     pivot["Parent"]       = parent
 
+    # Include individual child columns so the report can show per-child breakdown
+    child_cols = [c for c in present_children]
     return pivot[IDX + ["Year", "Parent", "parent_value", "children_sum",
-                         "residual", "tolerance", "Status"]].rename(
+                         "residual", "tolerance", "Status"] + child_cols].rename(
         columns={"parent_value": "Parent_Value", "children_sum": "Children_Sum",
                  "residual": "Residual", "tolerance": "Tolerance"}
     )

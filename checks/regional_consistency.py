@@ -140,13 +140,18 @@ def run(
     results = pd.concat(all_results, ignore_index=True) if all_results else pd.DataFrame()
 
     if results.empty:
+        # Save empty files so any stale results from a previous run are overwritten
+        out_path = make_out_dir(out_dir, run_id, "regional_consistency")
+        pd.DataFrame().to_csv(out_path / "results.csv", index=False)
+        pd.DataFrame().to_csv(out_path / "summary.csv", index=False)
+        print("  No complete regional groupings found in data — results are empty.")
         return {
             "check_name": "regional_consistency",
             "passed": True,
             "results": pd.DataFrame(),
             "summary": pd.DataFrame(),
             "unit_warnings": [],
-            "skipped": ["No valid groupings found"],
+            "skipped": ["No complete regional groupings found"],
         }
 
     # Generate summary
@@ -177,6 +182,7 @@ def run(
                 if not gt_group_results.empty:
                     gt_all_results.append(gt_group_results)
 
+        gt_out_path = make_out_dir(out_dir, run_id, "regional_consistency_ground_truth")
         if gt_all_results:
             gt_results = pd.concat(gt_all_results, ignore_index=True)
             gt_grp = gt_results.groupby(["Model", "Scenario", "Grouping"])["Status"]
@@ -185,8 +191,11 @@ def run(
                 if col not in gt_summary.columns:
                     gt_summary[col] = 0
             gt_summary["Pass_Rate"] = gt_summary.get("PASS", 0) / (gt_summary.get("PASS", 0) + gt_summary.get("FAIL", 0)).replace(0, np.nan)
-            gt_out_path = make_out_dir(out_dir, run_id, "regional_consistency_ground_truth")
             save_check_outputs(gt_out_path, gt_results, gt_summary)
+        else:
+            # Overwrite any stale results from a previous run
+            pd.DataFrame().to_csv(gt_out_path / "results.csv", index=False)
+            pd.DataFrame().to_csv(gt_out_path / "summary.csv", index=False)
 
     return {
         "check_name": "regional_consistency",
