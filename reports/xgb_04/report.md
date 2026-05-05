@@ -1,110 +1,168 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 14:46
+**Generated:** 2026-05-05 15:34
 **Results:** `results/xgb_04/`
 
 ---
 
 ## Overview
 
-| Check | Key metric | GT available |
-| --- | --- | --- |
-| Growth rate plausibility | mean pass rate 96.9% | ✓ |
-| Hierarchy sum check | mean pass rate 20.4% | ✓ |
-| Regional consistency | pass rate 0.2% | ✓ |
-| Physical bounds | pass rate 96.3% | ✓ |
-| Hard historical constraints | pass rate 68.4% | ✓ |
-| Soft future constraints | pass rate 66.6% | ✓ |
-| Inter-variable correlation | mean \|Δr²\| 0.0277 | ✗ |
+| Check | Metric | Predictions | Ground Truth |
+| --- | --- | --- | --- |
+| Hierarchy Sum Check | Scenario-region pass rate | 1.3% | 66.4% |
+|  | Mean relative error | 6.538% | 1.365% |
+| Growth Rate Plausibility | Timestep violation rate | 3.4% | 1.9% |
+| Regional Consistency | Scenario × variable pass rate | 0.0% | 0.0% |
+| Physical Bounds Check | Timestep violation rate | 3.72% | 1.59% |
+| Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
 
 ---
 
-## 1. Growth Rate Plausibility
+## 1. Hierarchy Sum Check
 
-_Period-on-period growth rates checked against empirically-derived bounds from
-the ground truth. Violations indicate trajectories with implausible dynamics._
+_Checks that predicted parent variables equal the sum of their direct children
+at every timestep. Predictions are **expected to fail** this check — the failure
+rate quantifies how much the model violates IAM accounting identities._
 
-Period-on-period growth rates checked against empirically-derived bounds from the ground truth data. Violations indicate trajectories with implausible dynamics.
+### Pass Rates by Parent Variable
 
-| Scenario_Category | Pass_Count | Fail_Count | Pass (%) | GT Pass (%) |
+| Parent Variable | Scenario-regions | Pass rate (%) | Mean error (%) | Max error (%) |
 | --- | --- | --- | --- | --- |
-| C5 | 64763 | 2117 | 96.8000 | 98.3000 |
-| C7 | 33677 | 1017 | 97.1000 | 98.7000 |
-| C6 | 41270 | 1613 | 96.2000 | 97.5000 |
-| C4 | 58481 | 2262 | 96.3000 | 97.6000 |
-| C3 | 118876 | 4339 | 96.5000 | 98.0000 |
-| C1 | 28662 | 1035 | 96.5000 | 98.0000 |
-| C2 | 46941 | 1775 | 96.4000 | 98.2000 |
-| no-climate-assessment | 10025 | 45 | 99.6000 | 99.3000 |
-| C8 | 3009 | 88 | 97.2000 | 98.7000 |
+| Secondary Energy\|Electricity | 1984 | 1.2601 | 6.5384 | 219.8757 |
 
+### Error Distribution
+
+![Sum check error distribution](figures/sum_check_error_dist.png)
+
+### Mean Error by Year
+
+![Sum check error by year](figures/sum_check_error_by_year.png)
+
+### Error Percentile Comparison — Predictions vs Ground Truth
+
+| Percentile | Predictions (%) | Ground truth (%) |
+| --- | --- | --- |
+| p50 | 5.0274 | 0.0025 |
+| p75 | 7.9962 | 1.7538 |
+| p90 | 12.1709 | 3.6437 |
+| p95 | 16.4388 | 5.4734 |
+| p99 | 27.9085 | 12.8627 |
 
 ---
 
-## 2. Hierarchy Sum Check
+## 2. Growth Rate Plausibility
 
-_Checks that predicted parent variables equal the sum of their direct children.
-The model is expected to fail — the failure rate quantifies how much the
-emulator violates IAM accounting identities._
+_For each predicted trajectory, checks that period-on-period growth rates
+fall within empirically-derived bounds from the ground truth data._
 
-Checks that each parent variable equals the sum of its direct children. The model is expected to fail — the failure rate quantifies how much the emulator violates IAM accounting identities.
+**Total timesteps evaluated:** 419,995  
+**Violations:** 14,291 (3.40%)  
 
-**Predictions:** 5,101 / 24,089 scenario-timesteps pass (21.2%)
-**Ground truth:** 17,624 / 24,089 pass (73.2%)
+**Ground truth — violation rate:** 1.94%  
+_(+1.46pp difference: predictions vs ground truth)_
 
+### Violation Rate by Variable
+
+![Plausibility violations by variable](figures/plausibility_violations_by_variable.png)
+
+### Violation Rate by Scenario Category
+
+| Category | Timesteps | Violations | Violation rate (%) |
+| --- | --- | --- | --- |
+| C6 | 42883 | 1613 | 3.7600 |
+| C4 | 60743 | 2262 | 3.7200 |
+| C2 | 48716 | 1775 | 3.6400 |
+| C3 | 123215 | 4339 | 3.5200 |
+| C1 | 29697 | 1035 | 3.4900 |
+| C5 | 66880 | 2117 | 3.1700 |
+| C7 | 34694 | 1017 | 2.9300 |
+| C8 | 3097 | 88 | 2.8400 |
+| no-climate-assessment | 10070 | 45 | 0.4500 |
 
 ---
 
 ## 3. Regional Consistency
 
-_Checks that predicted World values equal the sum of subregion predictions
-(R5 / R6 / R10 groupings). Only datasets with regional breakdowns are checked._
+_Checks that predicted World values equal the sum of predicted subregion values
+(R5 / R6 / R10 groupings). Only applicable to datasets with regional breakdowns._
 
-Checks that predicted World values equal the sum of subregion predictions.
+### Pass Rates by Regional Grouping — Predictions
 
-| Source | Pass | Fail | Pass (%) |
-| --- | --- | --- | --- |
-| Predictions | 634 | 282,181 | 0.2% |
-| Ground truth | 2,199 | 280,616 | 0.8% |
+| Grouping | Total | Passed | Pass rate (%) | Mean error (%) | Max error (%) |
+| --- | --- | --- | --- | --- | --- |
+| R10 | 8911 | 0 | 0.0000 | 27.6770 | 121992.0173 |
+| R5 | 9861 | 0 | 0.0000 | 23.1956 | 27922.4781 |
+| R6 | 4427 | 0 | 0.0000 | 52.3002 | 74162.6795 |
 
+### Pass Rates by Regional Grouping — Ground Truth
+
+| Grouping | Total | Passed | Pass rate (%) | Mean error (%) | Max error (%) |
+| --- | --- | --- | --- | --- | --- |
+| R10 | 8911 | 0 | 0.0000 | 7207.5346 | 583561176.9541 |
+| R5 | 9861 | 0 | 0.0000 | 41443.5449 | 5453563053.7464 |
+| R6 | 4427 | 0 | 0.0000 | 316.4751 | 16519328.4625 |
+
+### Pass Rate by Variable
+
+![Regional consistency by variable](figures/regional_consistency_by_variable.png)
 
 ---
 
 ## 4. Physical Bounds Check
 
-_Checks predictions against hard physical lower bounds and empirical bounds
-derived from ground truth._
+_Checks predictions against hard physical lower bounds (energy variables ≥ 0)
+and empirical per-variable bounds derived from ground truth._
 
-Checks predictions against hard physical lower bounds (energy variables ≥ 0) and empirical per-variable bounds derived from ground truth.
+**Timesteps checked:** 457,691  
+**Violations:** 17,041 (3.723%)  
+**Fully clean scenario-regions:** 32,149 / 37,696
 
-**Predictions:** 440,650 / 457,691 scenario-variable-timesteps pass (96.3%)
-**Ground truth:** 450,434 / 457,691 pass (98.4%)
+### Violations by Variable
 
+![Bounds violations by variable](figures/bounds_violations_by_variable.png)
+
+### Predictions vs Ground Truth
+
+| Source | Timesteps | Violations | Violation rate |
+| --- | --- | --- | --- |
+| Predictions | 457,691 | 17,041 | 3.723% |
+| Ground truth | 457,691 | 7,257 | 1.586% |
+
+_Predictions show +2.138 pp more violations than ground truth._
+
+### Violation Rate by Variable — Predictions vs Ground Truth
+
+![Bounds violation rate pred vs GT](figures/bounds_violation_rate_pred_vs_gt.png)
 
 ---
 
 ## 5. Hard Historical Constraints
 
-Checks World-level predictions at 2020 against the historical anchor values used in the AR6 scenario vetting process (Nicholls et al. 2022, Table 11). Status: PASS = within IP range, WARN = within outer tolerance, FAIL = outside outer tolerance. Belongs to the **historical and domain knowledge comparison** validation family.
+_Checks World-level predictions at 2020 against AR6 vetting reference values
+(Nicholls et al. 2022, Table 11). PASS = within IP range, WARN = within outer
+tolerance, FAIL = outside outer tolerance. Belongs to the **historical and
+domain knowledge comparison** validation family._
 
 | Sub-check | N | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
 | --- | --- | --- | --- | --- | --- | --- |
 | ch4_2020 | 89 | 88.8000 | 0.0000 | 11.2000 | 88.8000 | 11.2000 |
 | co2_change_2010_2020 | 18 | 100.0000 | 0.0000 | 0.0000 | 100.0000 | 0.0000 |
-| co2_eip_2020 | 89 | 53.9000 | 40.4000 | 5.6000 | 49.4000 | 6.7000 |
-| nuclear_energy_2020 | 89 | 69.7000 | 20.2000 | 10.1000 | 69.7000 | 10.1000 |
-| solar_wind_2020 | 89 | 55.1000 | 9.0000 | 36.0000 | 49.4000 | 34.8000 |
+| co2_eip_2020 | 89 | 53.9000 | 40.4000 | 5.6000 | 88.0000 | 12.0000 |
+| nuclear_energy_2020 | 89 | 69.7000 | 20.2000 | 10.1000 | 87.3000 | 12.7000 |
+| solar_wind_2020 | 89 | 55.1000 | 9.0000 | 36.0000 | 58.7000 | 41.3000 |
 
 
-_Skipped (required variables absent): ccs_2020: ['Carbon Sequestration|CCS'], primary_energy_2020: ['Primary Energy']_
+_Skipped sub-checks (required variables absent): ccs_2020: ['Carbon Sequestration|CCS'], primary_energy_2020: ['Primary Energy']_
 
 
 ---
 
 ## 6. Soft Future Constraints
 
-Checks World-level predictions at specific future years against domain-knowledge plausibility bounds from the AR6 vetting process (Table 11). Not used as hard exclusion criteria in AR6 but flagged as potentially problematic. Warranted via the constraint-violation argument. Belongs to the **historical and domain knowledge comparison** validation family.
+_Checks World-level predictions at 2030–2040 against domain-knowledge
+plausibility bounds from the AR6 vetting process (Table 11). Belongs to the
+**historical and domain knowledge comparison** validation family._
 
 | Sub-check | N | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
 | --- | --- | --- | --- | --- | --- |
@@ -113,7 +171,7 @@ Checks World-level predictions at specific future years against domain-knowledge
 | nuclear_electricity_2030 | 118 | 0.0000 | 100.0000 | 0.0000 | 100.0000 |
 
 
-_Skipped (required variables absent): ccs_2030: ['Carbon Sequestration|CCS']_
+_Skipped sub-checks (required variables absent): ccs_2030: ['Carbon Sequestration|CCS']_
 
 
 <p style="color:red;font-weight:bold">⚠️ POSSIBLE UNIT MISMATCH: median 1.255e+04 is ~1046x higher than expected 12 EJ/yr. Check units for Secondary Energy|Electricity|Nuclear</p>
@@ -123,27 +181,37 @@ _Skipped (required variables absent): ccs_2030: ['Carbon Sequestration|CCS']_
 
 ## 7. Inter-variable Correlations
 
-_Pearson r² between all variable pairs at years 2030, 2050, and 2100.
-A well-calibrated emulator should preserve the correlation structure of the
-parent simulation. Methodology follows Li et al. (2025) Fig. 4._
+_Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
+predictions against AR6 ground truth. A well-calibrated emulator should preserve
+the correlations present in real IAM data. Methodology follows Li et al. (2025) Fig. 4._
 
-Pearson r² correlation matrices between all predicted variables at key years, compared against AR6 ground truth. Lower mean |Δr²| indicates better preservation of inter-variable relationships.
-
-| Year | N_variables | Mean_abs_diff_r2 |
-| --- | --- | --- |
-| 2030.0000 | 19.0000 | 0.0219 |
-| 2050.0000 | 19.0000 | 0.0261 |
-| 2100.0000 | 19.0000 | 0.0350 |
+Inter-variable Pearson r² matrices at years 2030, 2050, and 2100, comparing model predictions against AR6 ground truth. Values close to the ground truth indicate the emulator preserves real-world variable relationships. Methodology follows Li et al. (2025) Fig. 4.
 
 ### 2030
+
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
 
 ![Inter-variable correlations 2030](figures/correlations_2030.png)
 
 ### 2050
 
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
 ![Inter-variable correlations 2050](figures/correlations_2050.png)
 
 ### 2100
 
+_Left: predictions. Centre: AR6 ground truth. Right: difference (blue = predictions underestimate correlation, red = overestimate)._
+
 ![Inter-variable correlations 2100](figures/correlations_2100.png)
+
+### Summary: Mean Absolute Difference in r²
+
+_Average absolute difference between predictions and ground truth correlation matrices (off-diagonal pairs only). Lower is better._
+
+| Year | N variables | Mean \|Δr²\| (off-diagonal) |
+| --- | --- | --- |
+| 2030.0 | 19.0 | 0.0219 |
+| 2050.0 | 19.0 | 0.0261 |
+| 2100.0 | 19.0 | 0.035 |
 
