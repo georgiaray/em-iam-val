@@ -325,39 +325,80 @@ def _fmt_pr(val):
     return f"{val:.1f}%" if val is not None else GT_MISSING
 
 
-def section_overview(run_dir: Path) -> str:
-    """
-    Single overview table covering all checks.
-    All metrics are expressed as pass rate (%) for consistency.
-    Inter-variable correlation is the one exception — it has no pass/fail threshold,
-    so it reports mean |Δr²| instead.
-    """
-    rows = []
+def _simple_table(rows: list) -> str:
+    """Build a small markdown table from a list of dicts, dropping all-'—' columns."""
+    df = pd.DataFrame(rows).fillna("—")
+    df = df.loc[:, (df != "—").any(axis=0)]
+    return md_table(df, fmt={c: "{}" for c in df.columns})
 
-    # 1. Sum check — pass rate + mean error
+
+def _constraint_table(raw: pd.DataFrame, gt_raw: pd.DataFrame, has_warn: bool) -> str:
+    """Per-sub-check table with Pass/Warn/Fail for constraint checks (5 & 6)."""
+    by_c = raw.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
+    for col in ("PASS", "WARN", "FAIL"):
+        if col not in by_c.columns:
+            by_c[col] = 0
+    by_c["total"] = by_c["PASS"] + by_c.get("WARN", 0) + by_c["FAIL"]
+
+    gt_lookup = {}
+    if gt_raw is not None and not gt_raw.empty:
+        gt_by_c = gt_raw.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
+        for col in ("PASS", "WARN", "FAIL"):
+            if col not in gt_by_c.columns:
+                gt_by_c[col] = 0
+        gt_by_c["total"] = gt_by_c["PASS"] + gt_by_c.get("WARN", 0) + gt_by_c["FAIL"]
+        for _, r in gt_by_c.iterrows():
+            t = r["total"]
+            gt_lookup[r["constraint_name"]] = {
+                "PASS": f"{100*r['PASS']/t:.1f}%" if t else "—",
+                "WARN": f"{100*r.get('WARN',0)/t:.1f}%" if t else "—",
+                "FAIL": f"{100*r['FAIL']/t:.1f}%" if t else "—",
+            }
+
+    rows = []
+    for _, sub_row in by_c.iterrows():
+        c = sub_row["constraint_name"]
+        t = sub_row["total"]
+        gt = gt_lookup.get(c, {})
+        entry = {
+            "Sub-check":   c,
+            "Pass (%)":    f"{100*sub_row['PASS']/t:.1f}%" if t else "—",
+            "Fail (%)":    f"{100*sub_row['FAIL']/t:.1f}%" if t else "—",
+            "GT Pass (%)": gt.get("PASS", GT_MISSING),
+            "GT Fail (%)": gt.get("FAIL", GT_MISSING),
+        }
+        if has_warn:
+            entry["Warn (%)"]    = f"{100*sub_row.get('WARN',0)/t:.1f}%" if t else "—"
+            entry["GT Warn (%)"] = gt.get("WARN", "—")
+            # Reorder to put Warn between Pass and Fail
+            entry = {k: entry[k] for k in
+                     ["Sub-check","Pass (%)","Warn (%)","Fail (%)","GT Pass (%)","GT Warn (%)","GT Fail (%)"]}
+        rows.append(entry)
+
+    return _simple_table(rows)
+
+
+def section_overview(run_dir: Path) -> str:
+    """One small table per check, stacked vertically."""
+    blocks = []
+
+    # 1. Hierarchy Sum Check
     sc_raw    = load(run_dir, "sum_check", "results.csv")
     gt_sc_raw = load(run_dir, "sum_check_ground_truth", "results.csv")
     if sc_raw is not None:
         sc,    _ = _adapt_sum_results(sc_raw)
         gt_sc, _ = _adapt_sum_results(gt_sc_raw) if gt_sc_raw is not None else (None, None)
-        rows.append({
-            "Check":        "1. Hierarchy Sum Check",
-            "Metric":       "Pass rate",
-            "Pass (%)":     _fmt_pr(100 * sc["passed"].mean()),
-            "Fail (%)":     _fmt_pr(100 * (1 - sc["passed"].mean())),
-            "GT Pass (%)":  _fmt_pr(100 * gt_sc["passed"].mean()) if gt_sc is not None else GT_MISSING,
-            "GT Fail (%)":  _fmt_pr(100 * (1 - gt_sc["passed"].mean())) if gt_sc is not None else GT_MISSING,
-        })
-        me = sc["mean_error_pct"].mean()
-        gt_me = f'{gt_sc["mean_error_pct"].mean():.3f}%' if gt_sc is not None else GT_MISSING
-        rows.append({
-            "Check":        "",
-            "Metric":       "Mean relative error",
-            "Pass (%)":     f"{me:.3f}%",
-            "GT Pass (%)":  gt_me,
-        })
+        tbl = _simple_table([
+            {"Metric": "Pass rate",
+             "Predictions": _fmt_pr(100 * sc["passed"].mean()),
+             "Ground Truth": _fmt_pr(100 * gt_sc["passed"].mean()) if gt_sc is not None else GT_MISSING},
+            {"Metric": "Mean relative error",
+             "Predictions": f'{sc["mean_error_pct"].mean():.3f}%',
+             "Ground Truth": f'{gt_sc["mean_error_pct"].mean():.3f}%' if gt_sc is not None else GT_MISSING},
+        ])
+        blocks.append("**1. Hierarchy Sum Check**\n\n" + tbl)
 
-    # 2. Growth rate plausibility — pass rate (= 1 − violation rate)
+    # 2. Growth Rate Plausibility
     pl_raw    = load(run_dir, "check_plausibility", "results.csv")
     gt_pl_raw = load(run_dir, "check_plausibility_ground_truth", "results.csv")
     if pl_raw is not None:
@@ -368,34 +409,34 @@ def section_overview(run_dir: Path) -> str:
                 gt_viol = _adapt_plausibility(gt_pl_raw)
                 if gt_viol is not None:
                     gt_pr = _fmt_pr(100 * (1 - gt_viol["violation"].mean()))
-            rows.append({
-                "Check":        "2. Growth Rate Plausibility",
-                "Metric":       "Pass rate (timesteps)",
-                "Pass (%)":     _fmt_pr(100 * (1 - viol["violation"].mean())),
-                "Fail (%)":     _fmt_pr(100 * viol["violation"].mean()),
-                "GT Pass (%)":  gt_pr,
-            })
+            tbl = _simple_table([
+                {"Metric": "Pass rate (timesteps)",
+                 "Predictions": _fmt_pr(100 * (1 - viol["violation"].mean())),
+                 "Ground Truth": gt_pr},
+            ])
+            blocks.append("**2. Growth Rate Plausibility**\n\n" + tbl)
 
-    # 3. Regional consistency — pass rate
+    # 3. Regional Consistency
     rc_raw    = load(run_dir, "regional_consistency", "results.csv")
     gt_rc_raw = load(run_dir, "regional_consistency_ground_truth", "results.csv")
-    if rc_raw is not None:
+    if rc_raw is not None and not rc_raw.empty:
         rc = _adapt_regional(rc_raw)
         if rc is not None:
             gt_pr = GT_MISSING
-            if gt_rc_raw is not None:
+            if gt_rc_raw is not None and not gt_rc_raw.empty:
                 gt_rc = _adapt_regional(gt_rc_raw)
                 if gt_rc is not None:
                     gt_pr = _fmt_pr(100 * gt_rc["passed"].mean())
-            rows.append({
-                "Check":        "3. Regional Consistency",
-                "Metric":       "Pass rate (scenario × variable)",
-                "Pass (%)":     _fmt_pr(100 * rc["passed"].mean()),
-                "Fail (%)":     _fmt_pr(100 * (1 - rc["passed"].mean())),
-                "GT Pass (%)":  gt_pr,
-            })
+            tbl = _simple_table([
+                {"Metric": "Pass rate (scenario × variable)",
+                 "Predictions": _fmt_pr(100 * rc["passed"].mean()),
+                 "Ground Truth": gt_pr},
+            ])
+            blocks.append("**3. Regional Consistency**\n\n" + tbl)
+    elif rc_raw is not None and rc_raw.empty:
+        blocks.append("**3. Regional Consistency**\n\n_No complete regional groupings in this dataset._")
 
-    # 4. Bounds check — pass rate (= 1 − violation rate)
+    # 4. Physical Bounds Check
     bc_raw    = load(run_dir, "bounds_check", "results.csv")
     gt_bc_raw = load(run_dir, "bounds_check_ground_truth", "results.csv")
     if bc_raw is not None:
@@ -408,104 +449,41 @@ def section_overview(run_dir: Path) -> str:
             if gt_bc_raw is not None:
                 gt_bc, _ = _adapt_bounds(gt_bc_raw)
                 if gt_bc is not None:
-                    gt_t = gt_bc["n_timesteps"].sum()
+                    gt_t  = gt_bc["n_timesteps"].sum()
                     gt_pr = _fmt_pr(100 * (1 - gt_bc["n_violations"].sum() / gt_t)) if gt_t else GT_MISSING
-            rows.append({
-                "Check":        "4. Physical Bounds Check",
-                "Metric":       "Pass rate (timesteps)",
-                "Pass (%)":     _fmt_pr(pr),
-                "Fail (%)":     _fmt_pr(100 - pr),
-                "GT Pass (%)":  gt_pr,
-            })
+            tbl = _simple_table([
+                {"Metric": "Pass rate (timesteps)",
+                 "Predictions": _fmt_pr(pr),
+                 "Ground Truth": gt_pr},
+            ])
+            blocks.append("**4. Physical Bounds Check**\n\n" + tbl)
 
-    # 5 & 6. Constraint checks — worst and best sub-check, with Pass/Warn/Fail columns
-    def _constraint_rows(check_num, check_name, label, raw, gt_raw, has_warn):
-        if raw is None or raw.empty:
-            return
-        by_c = raw.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
-        for col in ("PASS", "WARN", "FAIL"):
-            if col not in by_c.columns:
-                by_c[col] = 0
-        by_c["total"] = by_c["PASS"] + by_c.get("WARN", 0) + by_c["FAIL"]
-        by_c["pass_rate"] = (by_c["PASS"] + by_c.get("WARN", 0)) / by_c["total"].replace(0, np.nan)
-
-        gt_lookup = {}
-        if gt_raw is not None and not gt_raw.empty:
-            gt_by_c = gt_raw.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
-            for col in ("PASS", "WARN", "FAIL"):
-                if col not in gt_by_c.columns:
-                    gt_by_c[col] = 0
-            gt_by_c["total"] = gt_by_c["PASS"] + gt_by_c.get("WARN", 0) + gt_by_c["FAIL"]
-            for _, r in gt_by_c.iterrows():
-                t = r["total"]
-                gt_lookup[r["constraint_name"]] = {
-                    "PASS": f"{100*r['PASS']/t:.1f}%" if t else "—",
-                    "WARN": f"{100*r.get('WARN',0)/t:.1f}%" if t else "—",
-                    "FAIL": f"{100*r['FAIL']/t:.1f}%" if t else "—",
-                }
-
-        best  = by_c.loc[by_c["pass_rate"].idxmax()]
-        worst = by_c.loc[by_c["pass_rate"].idxmin()]
-
-        for i, (sub_row, tag) in enumerate([(best, "best"), (worst, "worst")]):
-            c = sub_row["constraint_name"]
-            t = sub_row["total"]
-            gt = gt_lookup.get(c, {})
-            entry = {
-                "Check":       f"{check_num}. {label}" if i == 0 else "",
-                "Sub-check":   f"{c} ({tag})",
-                "Pass (%)":    f"{100*sub_row['PASS']/t:.1f}%" if t else "—",
-                "Warn (%)":    f"{100*sub_row.get('WARN',0)/t:.1f}%" if (t and has_warn) else "—",
-                "Fail (%)":    f"{100*sub_row['FAIL']/t:.1f}%" if t else "—",
-                "GT Pass (%)": gt.get("PASS", GT_MISSING),
-                "GT Warn (%)": gt.get("WARN", "—") if has_warn else "—",
-                "GT Fail (%)": gt.get("FAIL", GT_MISSING),
-            }
-            rows.append(entry)
-
+    # 5. Hard Historical Constraints
     hh_raw    = load(run_dir, "hard_historical_constraints", "results.csv")
     gt_hh_raw = load(run_dir, "hard_historical_constraints_ground_truth", "results.csv")
     if hh_raw is not None and not hh_raw.empty:
-        _constraint_rows("5", "hard_historical_constraints", "Hard Historical Constraints",
-                         hh_raw, gt_hh_raw, has_warn=True)
+        tbl = _constraint_table(hh_raw, gt_hh_raw, has_warn=True)
+        blocks.append("**5. Hard Historical Constraints** _(PASS = within IP range, WARN = within outer tolerance)_\n\n" + tbl)
 
+    # 6. Soft Future Constraints
     sf_raw    = load(run_dir, "soft_future_constraints", "results.csv")
     gt_sf_raw = load(run_dir, "soft_future_constraints_ground_truth", "results.csv")
     if sf_raw is not None and not sf_raw.empty:
-        _constraint_rows("6", "soft_future_constraints", "Soft Future Constraints",
-                         sf_raw, gt_sf_raw, has_warn=False)
+        tbl = _constraint_table(sf_raw, gt_sf_raw, has_warn=False)
+        blocks.append("**6. Soft Future Constraints**\n\n" + tbl)
 
-    # 7. Inter-variable correlations — mean |Δr²| (no pass/fail threshold)
+    # 7. Inter-variable Correlations
     corr_sum = load(run_dir, "inter_variable_correlation", "summary.csv")
     if corr_sum is not None and "Mean_abs_diff_r2" in corr_sum.columns:
         mean_diff = corr_sum["Mean_abs_diff_r2"].mean()
-        rows.append({
-            "Check":   "7. Inter-variable Correlations",
-            "Metric":  "Mean |Δr²| vs ground truth",
-            "Pass (%)": f"{mean_diff:.4f}",
-            "GT Pass (%)": "0.0000 (reference)",
-        })
+        tbl = _simple_table([
+            {"Metric": "Mean |Δr²| vs ground truth",
+             "Predictions": f"{mean_diff:.4f}",
+             "Ground Truth": "0.0000 (reference)"},
+        ])
+        blocks.append("**7. Inter-variable Correlations**\n\n" + tbl)
 
-    if not rows:
-        return "_No check results found._"
-
-    df = pd.DataFrame(rows)
-
-    # Canonical column order — columns absent from some rows are filled with "—"
-    ordered_cols = [
-        "Check", "Sub-check", "Metric",
-        "Pass (%)", "Warn (%)", "Fail (%)",
-        "GT Pass (%)", "GT Warn (%)", "GT Fail (%)",
-    ]
-    for col in ordered_cols:
-        if col not in df.columns:
-            df[col] = "—"
-    df = df[ordered_cols].fillna("—")
-
-    # Drop columns that are entirely "—" (e.g. Warn when no check uses it)
-    df = df.loc[:, (df != "—").any(axis=0)]
-
-    return md_table(df, fmt={c: "{}" for c in df.columns})
+    return "\n\n".join(blocks) if blocks else "_No check results found._"
 
 
 # ---------------------------------------------------------------------------

@@ -1,24 +1,50 @@
 # Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-05 16:03
+**Generated:** 2026-05-05 16:09
 **Results:** `results/li_vae_01/`
 
 ---
 
 ## Overview
 
-| Check | Sub-check | Metric | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1. Hierarchy Sum Check | — | Pass rate | 0.0% | — | 100.0% | 58.9% | — | 41.1% |
-|  | — | Mean relative error | 2019.856% | — | — | 10.095% | — | — |
-| 2. Growth Rate Plausibility | — | Pass rate (timesteps) | 78.1% | — | 21.9% | 88.5% | — | — |
-| 4. Physical Bounds Check | — | Pass rate (timesteps) | 76.0% | — | 24.0% | 98.6% | — | — |
-| 5. Hard Historical Constraints | ccs_2020 (best) | — | 96.7% | 3.0% | 0.2% | 98.2% | 1.4% | 0.3% |
-|  | ccs_2020 (worst) | — | 96.7% | 3.0% | 0.2% | 98.2% | 1.4% | 0.3% |
-| 6. Soft Future Constraints | nuclear_electricity_2030 (best) | — | 97.8% | — | 2.2% | 94.1% | — | 5.9% |
-|  | ccs_2030 (worst) | — | 95.3% | — | 4.7% | 91.3% | — | 8.7% |
-| 7. Inter-variable Correlations | — | Mean \|Δr²\| vs ground truth | 0.1383 | — | — | 0.0000 (reference) | — | — |
+**1. Hierarchy Sum Check**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Pass rate | 0.0% | 58.9% |
+| Mean relative error | 2019.856% | 10.095% |
+
+**2. Growth Rate Plausibility**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Pass rate (timesteps) | 78.1% | 88.5% |
+
+**4. Physical Bounds Check**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Pass rate (timesteps) | 76.0% | 98.6% |
+
+**5. Hard Historical Constraints** _(PASS = within IP range, WARN = within outer tolerance)_
+
+| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- | --- |
+| ccs_2020 | 96.7% | 3.0% | 0.2% | 98.2% | 1.4% | 0.3% |
+
+**6. Soft Future Constraints**
+
+| Sub-check | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- |
+| ccs_2030 | 95.3% | 4.7% | 91.3% | 8.7% |
+| nuclear_electricity_2030 | 97.8% | 2.2% | 94.1% | 5.9% |
+
+**7. Inter-variable Correlations**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Mean \|Δr²\| vs ground truth | 0.1383 | 0.0000 (reference) |
 
 ---
 

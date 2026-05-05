@@ -1,24 +1,55 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 16:05
+**Generated:** 2026-05-05 16:09
 **Results:** `results/xgb_04/`
 
 ---
 
 ## Overview
 
-| Check | Sub-check | Metric | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1. Hierarchy Sum Check | — | Pass rate | 1.3% | — | 98.7% | 66.4% | — | 33.6% |
-|  | — | Mean relative error | 6.538% | — | — | 1.365% | — | — |
-| 2. Growth Rate Plausibility | — | Pass rate (timesteps) | 87.4% | — | 12.6% | 83.1% | — | — |
-| 4. Physical Bounds Check | — | Pass rate (timesteps) | 96.3% | — | 3.7% | 98.4% | — | — |
-| 5. Hard Historical Constraints | co2_change_2010_2020 (best) | — | 100.0% | 0.0% | 0.0% | 100.0% | 0.0% | 0.0% |
-|  | solar_wind_2020 (worst) | — | 55.1% | 9.0% | 36.0% | 49.4% | 15.7% | 34.8% |
-| 6. Soft Future Constraints | co2_not_negative_2030 (best) | — | 100.0% | — | 0.0% | 100.0% | — | 0.0% |
-|  | nuclear_electricity_2030 (worst) | — | 0.0% | — | 100.0% | 0.0% | — | 100.0% |
-| 7. Inter-variable Correlations | — | Mean \|Δr²\| vs ground truth | 0.0277 | — | — | 0.0000 (reference) | — | — |
+**1. Hierarchy Sum Check**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Pass rate | 1.3% | 66.4% |
+| Mean relative error | 6.538% | 1.365% |
+
+**2. Growth Rate Plausibility**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Pass rate (timesteps) | 87.4% | 83.1% |
+
+**4. Physical Bounds Check**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Pass rate (timesteps) | 96.3% | 98.4% |
+
+**5. Hard Historical Constraints** _(PASS = within IP range, WARN = within outer tolerance)_
+
+| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- | --- |
+| ch4_2020 | 88.8% | 0.0% | 11.2% | 88.8% | 0.0% | 11.2% |
+| co2_change_2010_2020 | 100.0% | 0.0% | 0.0% | 100.0% | 0.0% | 0.0% |
+| co2_eip_2020 | 53.9% | 40.4% | 5.6% | 49.4% | 43.8% | 6.7% |
+| nuclear_energy_2020 | 69.7% | 20.2% | 10.1% | 69.7% | 20.2% | 10.1% |
+| solar_wind_2020 | 55.1% | 9.0% | 36.0% | 49.4% | 15.7% | 34.8% |
+
+**6. Soft Future Constraints**
+
+| Sub-check | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- |
+| ch4_2040 | 99.2% | 0.8% | 99.2% | 0.8% |
+| co2_not_negative_2030 | 100.0% | 0.0% | 100.0% | 0.0% |
+| nuclear_electricity_2030 | 0.0% | 100.0% | 0.0% | 100.0% |
+
+**7. Inter-variable Correlations**
+
+| Metric | Predictions | Ground Truth |
+| --- | --- | --- |
+| Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
 
 ---
 
