@@ -472,7 +472,14 @@ def section_overview(run_dir: Path) -> str:
         tbl = _constraint_table(sf_raw, gt_sf_raw, has_warn=False)
         blocks.append("**6. Soft Future Constraints**\n\n" + tbl)
 
-    # 7. Inter-variable Correlations
+    # 7. Verpoort constraints
+    vc_raw    = load(run_dir, "verpoort_constraints", "results.csv")
+    gt_vc_raw = load(run_dir, "verpoort_constraints_ground_truth", "results.csv")
+    if vc_raw is not None and not vc_raw.empty:
+        tbl = _constraint_table(vc_raw, gt_vc_raw, has_warn=True)
+        blocks.append("**7. Verpoort Constraints (IAMC 2025)**\n\n" + tbl)
+
+    # 8. Inter-variable Correlations
     corr_sum = load(run_dir, "inter_variable_correlation", "summary.csv")
     if corr_sum is not None and "Mean_abs_diff_r2" in corr_sum.columns:
         mean_diff = corr_sum["Mean_abs_diff_r2"].mean()
@@ -996,6 +1003,67 @@ def section_soft_future(run_dir: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Verpoort constraints section
+# ---------------------------------------------------------------------------
+
+def section_verpoort(run_dir: Path) -> str:
+    """Verpoort et al. (2025) IAMC vetting criteria."""
+    pred = load(run_dir, "verpoort_constraints", "results.csv")
+    gt   = load(run_dir, "verpoort_constraints_ground_truth", "results.csv")
+    skipped_path = run_dir / "verpoort_constraints" / "skipped.csv"
+
+    if pred is None:
+        return "_Verpoort constraints results not found. Run `validate.py` first._\n"
+
+    blocks = []
+
+    summary = pred.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
+    for col in ("PASS", "WARN", "FAIL"):
+        if col not in summary.columns:
+            summary[col] = 0
+    summary["N"] = summary["PASS"] + summary.get("WARN", 0) + summary["FAIL"]
+    summary["Pass (%)"] = (100 * summary["PASS"] / summary["N"].replace(0, np.nan)).round(1)
+    if "WARN" in summary.columns and summary["WARN"].sum() > 0:
+        summary["Warn (%)"] = (100 * summary["WARN"] / summary["N"].replace(0, np.nan)).round(1)
+    summary["Fail (%)"] = (100 * summary["FAIL"] / summary["N"].replace(0, np.nan)).round(1)
+
+    if gt is not None and not gt.empty:
+        gt_sum = gt.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
+        for col in ("PASS", "WARN", "FAIL"):
+            if col not in gt_sum.columns:
+                gt_sum[col] = 0
+        gt_sum["N_gt"] = gt_sum["PASS"] + gt_sum.get("WARN", 0) + gt_sum["FAIL"]
+        gt_sum["GT Pass (%)"] = (100 * gt_sum["PASS"] / gt_sum["N_gt"].replace(0, np.nan)).round(1)
+        gt_sum["GT Fail (%)"] = (100 * gt_sum["FAIL"] / gt_sum["N_gt"].replace(0, np.nan)).round(1)
+        summary = summary.merge(gt_sum[["constraint_name", "GT Pass (%)", "GT Fail (%)"]],
+                                on="constraint_name", how="left")
+
+    cols = ["constraint_name", "N", "Pass (%)"]
+    if "Warn (%)" in summary.columns:
+        cols.append("Warn (%)")
+    cols.append("Fail (%)")
+    if "GT Pass (%)" in summary.columns:
+        cols += ["GT Pass (%)", "GT Fail (%)"]
+    tbl = summary[cols].rename(columns={"constraint_name": "Sub-check"})
+    blocks.append(md_table(tbl.fillna("—")))
+
+    if skipped_path.exists():
+        sk = pd.read_csv(skipped_path)
+        if not sk.empty:
+            skipped_list = sk.apply(lambda r: f"{r['constraint']} ({r['reason']})", axis=1).tolist()
+            blocks.append(f"\n_Not run: {', '.join(skipped_list)}_")
+
+    unit_warn_path = run_dir / "verpoort_constraints" / "unit_warnings.csv"
+    if unit_warn_path.exists():
+        uwdf = pd.read_csv(unit_warn_path)
+        if not uwdf.empty:
+            for _, row in uwdf.iterrows():
+                blocks.append(f'\n<p style="color:red;font-weight:bold">⚠️ {row["warning"]}</p>')
+
+    return "\n\n".join(blocks) + "\n"
+
+
+# ---------------------------------------------------------------------------
 # Correlations section  (uses pre-generated figures from inter_variable_correlation/)
 # ---------------------------------------------------------------------------
 
@@ -1082,6 +1150,7 @@ def main():
     bc_body, bc_figs = section_bounds(run_dir, fig_dir)
     hh_body          = section_hard_historical(run_dir)
     sf_body          = section_soft_future(run_dir)
+    vc_body          = section_verpoort(run_dir)
     co_body, co_figs = section_correlations(run_dir, fig_dir)
 
     all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs
@@ -1159,7 +1228,19 @@ plausibility bounds from the AR6 vetting process (Table 11). Belongs to the
 
 ---
 
-## 7. Inter-variable Correlations
+## 7. Verpoort Constraints (IAMC 2025)
+
+_Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published
+successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data
+at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
+Status: PASS = within medium-concern bounds, WARN = within strong-concern bounds,
+FAIL = outside strong-concern (exclusion-level) bounds._
+
+{vc_body}
+
+---
+
+## 8. Inter-variable Correlations
 
 _Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
 predictions against AR6 ground truth. A well-calibrated emulator should preserve

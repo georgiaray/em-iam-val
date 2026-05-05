@@ -40,8 +40,9 @@ CHECKS = [
     ("sum_check",                    "Hierarchy sum check"),
     ("regional_consistency",         "Regional consistency"),
     ("bounds_check",                 "Physical bounds"),
-    ("hard_historical_constraints",  "Hard historical constraints"),
-    ("soft_future_constraints",      "Soft future constraints"),
+    ("hard_historical_constraints",  "Hard historical constraints (WGIII/AR6)"),
+    ("soft_future_constraints",      "Soft future constraints (WGIII/AR6)"),
+    ("verpoort_constraints",         "Verpoort constraints (IAMC 2025)"),
     ("inter_variable_correlation",   "Inter-variable correlation"),
 ]
 
