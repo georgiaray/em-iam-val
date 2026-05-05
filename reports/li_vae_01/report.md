@@ -1,7 +1,7 @@
-# Li et al. Validation — VAE (li_vae_01)
+# Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-05 11:34
+**Generated:** 2026-05-05 11:54
 **Results path:** `results/xgb/li_vae_01/`
 
 ---

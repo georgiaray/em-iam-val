@@ -107,13 +107,14 @@ CONSTRAINTS: list[dict] = [
         ),
     },
     {
-        "name":        "ccs_2030",
-        "label":       "CCS from energy in 2030 < 2,000 MtCO₂/yr",
-        "required":    ["Carbon Sequestration|CCS"],
-        "compute_fn":  lambda df: df["Carbon Sequestration|CCS"],
-        "year":        2030,
-        "lower_bound": None,
-        "upper_bound": 2_000.0,
+        "name":          "ccs_2030",
+        "label":         "CCS from energy in 2030 < 2,000 MtCO₂/yr",
+        "required":      ["Carbon Sequestration|CCS"],
+        "compute_fn":    lambda df: df["Carbon Sequestration|CCS"],
+        "year":          2030,
+        "typical_value": 300.0,
+        "lower_bound":   None,
+        "upper_bound":   2_000.0,
         "unit":        "MtCO₂/yr",
         "source":      "AR6 vetting criteria (Table 11)",
         "note": (
@@ -124,13 +125,14 @@ CONSTRAINTS: list[dict] = [
         ),
     },
     {
-        "name":        "nuclear_electricity_2030",
-        "label":       "Electricity from nuclear in 2030 < 20 EJ/yr",
-        "required":    ["Secondary Energy|Electricity|Nuclear"],
-        "compute_fn":  lambda df: df["Secondary Energy|Electricity|Nuclear"],
-        "year":        2030,
-        "lower_bound": None,
-        "upper_bound": 20.0,
+        "name":          "nuclear_electricity_2030",
+        "label":         "Electricity from nuclear in 2030 < 20 EJ/yr",
+        "required":      ["Secondary Energy|Electricity|Nuclear"],
+        "compute_fn":    lambda df: df["Secondary Energy|Electricity|Nuclear"],
+        "year":          2030,
+        "typical_value": 12.0,
+        "lower_bound":   None,
+        "upper_bound":   20.0,
         "unit":        "EJ/yr",
         "source":      "AR6 vetting criteria (Table 11)",
         "note": (
@@ -140,13 +142,14 @@ CONSTRAINTS: list[dict] = [
         ),
     },
     {
-        "name":        "ch4_2040",
-        "label":       "CH₄ emissions in 2040 in [100, 1000] MtCH₄/yr",
-        "required":    ["Emissions|CH4"],
-        "compute_fn":  lambda df: df["Emissions|CH4"],
-        "year":        2040,
-        "lower_bound": 100.0,
-        "upper_bound": 1_000.0,
+        "name":          "ch4_2040",
+        "label":         "CH₄ emissions in 2040 in [100, 1000] MtCH₄/yr",
+        "required":      ["Emissions|CH4"],
+        "compute_fn":    lambda df: df["Emissions|CH4"],
+        "year":          2040,
+        "typical_value": 300.0,
+        "lower_bound":   100.0,
+        "upper_bound":   1_000.0,
         "unit":        "MtCH₄/yr",
         "source":      "AR6 vetting criteria (Table 11)",
         "note": (
@@ -220,11 +223,18 @@ _CONVERSIONS: dict[tuple[str, str], float] = {
     ("EJ/yr",   "PJ/yr"):   1e3,
     ("GJ",      "EJ"):      1e-9,
     ("TJ",      "EJ"):      1e-6,
-    ("GtCO2",   "MtCO2"):   1e3,
-    ("MtCO2",   "GtCO2"):   1e-3,
-    ("GtCO2/yr","MtCO2/yr"):1e3,
-    ("MtC",     "MtCO2"):   44.0 / 12.0,
-    ("GtC",     "MtCO2"):   44.0 / 12.0 * 1e3,
+    ("GtCO2",    "MtCO2"):  1e3,
+    ("MtCO2",    "GtCO2"):  1e-3,
+    ("GtCO2/yr", "MtCO2/yr"): 1e3,
+    ("MtC",      "MtCO2"):  44.0 / 12.0,
+    ("GtC",      "MtCO2"):  44.0 / 12.0 * 1e3,
+    ("Mt CO2/yr",  "MtCO2/yr"): 1.0,
+    ("Mt CO2",     "MtCO2"):    1.0,
+    ("Gt CO2/yr",  "MtCO2/yr"): 1e3,
+    ("Mt CH4/yr",  "MtCH4/yr"): 1.0,
+    ("Mt CH4",     "MtCH4"):    1.0,
+    ("Mt N2O/yr",  "MtN2O/yr"): 1.0,
+    ("Mt N2O",     "MtN2O"):    1.0,
     ("GtCH4",   "MtCH4"):   1e3,
     ("MtCH4",   "GtCH4"):   1e-3,
     ("GtN2O",   "MtN2O"):   1e3,
@@ -326,25 +336,53 @@ def _filter_world(long: pd.DataFrame, world_region: str) -> tuple[pd.DataFrame, 
         return long.copy(), True
 
 
+_UNITS_WARN_THRESHOLD = 100.0
+
+
+def check_unit_plausibility(result: pd.DataFrame, constraint: dict) -> Optional[str]:
+    """Return a warning string if computed values look implausibly off from the typical value."""
+    typical = constraint.get("typical_value")
+    if typical is None or typical == 0:
+        return None
+    if result.empty or result["computed_value"].dropna().empty:
+        return None
+    median_val = result["computed_value"].median()
+    if median_val == 0:
+        return None
+    ratio = abs(median_val / typical)
+    if ratio >= _UNITS_WARN_THRESHOLD or ratio <= 1.0 / _UNITS_WARN_THRESHOLD:
+        factor = ratio if ratio >= _UNITS_WARN_THRESHOLD else 1.0 / ratio
+        direction = "higher" if median_val > typical else "lower"
+        return (
+            f"⚠️  POSSIBLE UNIT MISMATCH — median computed value ({median_val:.4g}) "
+            f"is ~{factor:.0f}× {direction} than the expected reference "
+            f"({typical:.4g} {constraint.get('unit', '')}). "
+            f"Are you sure your units config is correct for "
+            f"{', '.join(constraint['required'])}?"
+        )
+    return None
+
+
 def run_constraint(
     long: pd.DataFrame,
     constraint: dict,
     available_vars: set,
     available_years: set,
     world_region: str = "World",
-) -> tuple[pd.DataFrame | None, str, list[str]]:
+) -> tuple[pd.DataFrame | None, str, list[str], Optional[str]]:
     """
     Run a single constraint check.
 
     Returns
     -------
-    result_df  : pd.DataFrame or None
-    run_status : 'run' | 'skip'
-    missing    : list of missing variable names (empty if run_status == 'run')
+    result_df    : pd.DataFrame or None
+    run_status   : 'run' | 'skip'
+    missing      : list of missing variable names (empty if run_status == 'run')
+    unit_warning : str or None
     """
     missing = [v for v in constraint["required"] if v not in available_vars]
     if missing:
-        return None, "skip", missing
+        return None, "skip", missing, None
 
     filtered, fallback = _filter_world(long, world_region)
     if fallback:
@@ -374,7 +412,8 @@ def run_constraint(
     )
     wide["constraint_name"] = constraint["name"]
 
-    return wide[IDX + ["computed_value", "year_used", "status", "constraint_name"]], "run", []
+    unit_warning = check_unit_plausibility(wide, constraint)
+    return wide[IDX + ["computed_value", "year_used", "status", "constraint_name"]], "run", [], unit_warning
 
 
 # ---------------------------------------------------------------------------
@@ -548,9 +587,10 @@ def main():
     skipped         = []
     results         = []
     constraints_run = []
+    unit_warnings   = []
 
     for constraint in CONSTRAINTS:
-        result, status, missing = run_constraint(
+        result, status, missing, unit_warn = run_constraint(
             long, constraint, available_vars, available_years, args.world_region
         )
         if status == "skip":
@@ -559,6 +599,9 @@ def main():
         else:
             results.append(result)
             constraints_run.append(constraint)
+            if unit_warn:
+                print(f"\n  *** UNIT WARNING *** {unit_warn}")
+                unit_warnings.append((constraint["name"], unit_warn))
 
     report_overview(skipped, results, constraints_run)
     for result, constraint in zip(results, constraints_run):
@@ -574,6 +617,11 @@ def main():
     if skipped:
         pd.DataFrame(skipped, columns=["constraint_name", "missing_variables"]).to_csv(
             out_dir / "skipped.csv", index=False
+        )
+
+    if unit_warnings:
+        pd.DataFrame(unit_warnings, columns=["constraint_name", "warning"]).to_csv(
+            out_dir / "unit_warnings.csv", index=False
         )
 
     print(f"\n{'='*60}")

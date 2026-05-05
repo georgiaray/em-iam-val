@@ -913,6 +913,27 @@ def section_bounds(results_base: Path, fig_dir: Path) -> tuple[str, list]:
 # Hard historical constraints
 # ---------------------------------------------------------------------------
 
+def _unit_warnings_block(check_dir: Path) -> str:
+    """Return a red-highlighted HTML block for any unit warnings, or empty string."""
+    path = check_dir / "unit_warnings.csv"
+    if not path.exists():
+        return ""
+    try:
+        df = pd.read_csv(path)
+        if df.empty:
+            return ""
+        lines = []
+        for _, row in df.iterrows():
+            lines.append(
+                f'<p style="color:red;font-weight:bold">'
+                f'⚠️ {row["constraint_name"]}: {row["warning"]}'
+                f'</p>'
+            )
+        return "\n" + "\n".join(lines) + "\n"
+    except Exception:
+        return ""
+
+
 def section_hard_historical(results_base: Path) -> str:
     """
     Summarise results from hard_historical_constraints.py.
@@ -996,6 +1017,10 @@ def section_hard_historical(results_base: Path) -> str:
                 f"{skipped_list}_"
             )
 
+    unit_warn_block = _unit_warnings_block(check_dir)
+    if unit_warn_block:
+        blocks.append(unit_warn_block)
+
     return "\n\n".join(blocks) + "\n"
 
 
@@ -1078,6 +1103,10 @@ def section_soft_future(results_base: Path) -> str:
                 f"\n_Skipped sub-checks (required variables absent from this run): "
                 f"{skipped_list}_"
             )
+
+    unit_warn_block = _unit_warnings_block(check_dir)
+    if unit_warn_block:
+        blocks.append(unit_warn_block)
 
     return "\n\n".join(blocks) + "\n"
 

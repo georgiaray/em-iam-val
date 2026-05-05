@@ -105,11 +105,19 @@ _CONVERSIONS: dict[tuple[str, str], float] = {
     ("GJ",      "EJ"):      1e-9,
     ("TJ",      "EJ"):      1e-6,
     # Carbon
-    ("GtCO2",   "MtCO2"):   1e3,
-    ("MtCO2",   "GtCO2"):   1e-3,
-    ("GtCO2/yr","MtCO2/yr"):1e3,
-    ("MtC",     "MtCO2"):   44.0 / 12.0,   # carbon to CO2
-    ("GtC",     "MtCO2"):   44.0 / 12.0 * 1e3,
+    ("GtCO2",    "MtCO2"):  1e3,
+    ("MtCO2",    "GtCO2"):  1e-3,
+    ("GtCO2/yr", "MtCO2/yr"): 1e3,
+    ("MtC",      "MtCO2"):  44.0 / 12.0,
+    ("GtC",      "MtCO2"):  44.0 / 12.0 * 1e3,
+    # Spaced variants (e.g. "Mt CO2/yr" as used in some configs)
+    ("Mt CO2/yr",  "MtCO2/yr"): 1.0,
+    ("Mt CO2",     "MtCO2"):    1.0,
+    ("Gt CO2/yr",  "MtCO2/yr"): 1e3,
+    ("Mt CH4/yr",  "MtCH4/yr"): 1.0,
+    ("Mt CH4",     "MtCH4"):    1.0,
+    ("Mt N2O/yr",  "MtN2O/yr"): 1.0,
+    ("Mt N2O",     "MtN2O"):    1.0,
     # Methane / other GHGs
     ("GtCH4",   "MtCH4"):   1e3,
     ("MtCH4",   "GtCH4"):   1e-3,
@@ -280,6 +288,7 @@ CONSTRAINTS: list[dict] = [
         "compute_fn":     lambda df: df["Emissions|CO2"],
         "year":           2020,
         "reference_unit": "MtCO2",
+        "typical_value":  37_646.0,
         "outer_lower":    _co2_ol,
         "outer_upper":    _co2_oh,
         "inner_lower":    _co2_il,
@@ -299,6 +308,7 @@ CONSTRAINTS: list[dict] = [
         "compute_fn":     lambda df: df["Emissions|CH4"],
         "year":           2020,
         "reference_unit": "MtCH4",
+        "typical_value":  379.0,
         "outer_lower":    _ch4_ol,
         "outer_upper":    _ch4_oh,
         "inner_lower":    _ch4_il,
@@ -334,6 +344,7 @@ CONSTRAINTS: list[dict] = [
         "compute_fn":     lambda df: df["Carbon Sequestration|CCS"],
         "year":           2020,
         "reference_unit": "MtCO2",
+        "typical_value":  50.0,
         "outer_lower":    0.0,
         "outer_upper":    250.0,
         "inner_lower":    None,
@@ -353,6 +364,7 @@ CONSTRAINTS: list[dict] = [
         "compute_fn":     lambda df: df["Primary Energy"],
         "year":           2020,
         "reference_unit": "EJ",
+        "typical_value":  578.0,
         "outer_lower":    _pe_ol,
         "outer_upper":    _pe_oh,
         "inner_lower":    _pe_il,
@@ -372,18 +384,26 @@ CONSTRAINTS: list[dict] = [
         "compute_fn":     lambda df: df["Primary Energy|Nuclear"],
         "year":           2020,
         "reference_unit": "EJ",
+        "typical_value":  9.77,
         "outer_lower":    _nuc_ol,
         "outer_upper":    _nuc_oh,
         "inner_lower":    _nuc_il,
         "inner_upper":    _nuc_ih,
         "unit":           "EJ",
-        "source":      "IEA 2020 (direct equivalent accounting)",
-        "note":        "Reference value 9.77 EJ (±30% outer, ±20% IP range).",
+        "source":         "AR6 vetting criteria (Table 11); IEA 2020 direct equivalent",
+        "note": (
+            "Reference value 9.77 EJ (±30% outer, ±20% IP range). "
+            "Uses Primary Energy|Nuclear. The AR6 vetting check is designed to "
+            "detect reporting errors from different primary energy accounting "
+            "conventions (direct vs thermal equivalent). Secondary energy "
+            "electricity cannot substitute — it would not catch such errors."
+        ),
     },
     {
         "name":           "solar_wind_2020",
         "label":          "Solar + wind primary energy (2020)",
         "required":       ["Primary Energy|Solar", "Primary Energy|Wind"],
+        "typical_value":  8.51,
         "compute_fn":     lambda df: df["Primary Energy|Solar"] + df["Primary Energy|Wind"],
         "year":           2020,
         "reference_unit": "EJ",
@@ -392,10 +412,11 @@ CONSTRAINTS: list[dict] = [
         "inner_lower":    _sw_il,
         "inner_upper":    _sw_ih,
         "unit":           "EJ",
-        "source":      "IEA 2020, IRENA, BP, EMBERS; trends extrapolated to 2020",
+        "source":         "AR6 vetting criteria (Table 11); IEA/IRENA/BP/EMBERS 2020",
         "note": (
             "Reference value 8.51 EJ (±50% outer, ±25% IP range). "
-            "Computed as Primary Energy|Solar + Primary Energy|Wind."
+            "Uses Primary Energy|Solar + Primary Energy|Wind. As with nuclear, "
+            "the check targets primary energy accounting fidelity specifically."
         ),
     },
 ]
@@ -535,25 +556,60 @@ def _classify(val: float, outer_lower, outer_upper, inner_lower, inner_upper) ->
     return "PASS"
 
 
+_UNITS_WARN_THRESHOLD = 100.0  # flag if median is this many times off the typical value
+
+
+def check_unit_plausibility(result: pd.DataFrame, constraint: dict) -> Optional[str]:
+    """
+    Compare the median computed value against the constraint's typical_value.
+    If the ratio is more than _UNITS_WARN_THRESHOLD in either direction, return
+    a warning string suggesting a possible unit mismatch. Returns None if the
+    values look plausible or if no typical_value is defined.
+    """
+    typical = constraint.get("typical_value")
+    if typical is None or typical == 0:
+        return None
+    if result.empty or result["computed_value"].dropna().empty:
+        return None
+
+    median_val = result["computed_value"].median()
+    if median_val == 0:
+        return None
+
+    ratio = abs(median_val / typical)
+    if ratio >= _UNITS_WARN_THRESHOLD or ratio <= 1.0 / _UNITS_WARN_THRESHOLD:
+        factor = ratio if ratio >= _UNITS_WARN_THRESHOLD else 1.0 / ratio
+        direction = "higher" if median_val > typical else "lower"
+        return (
+            f"⚠️  POSSIBLE UNIT MISMATCH — median computed value ({median_val:.4g}) "
+            f"is ~{factor:.0f}× {direction} than the expected reference "
+            f"({typical:.4g} {constraint.get('unit', '')}). "
+            f"Are you sure your units config is correct for "
+            f"{', '.join(constraint['required'])}?"
+        )
+    return None
+
+
 def run_constraint(
     long: pd.DataFrame,
     constraint: dict,
     available_vars: set,
     available_years: set,
     world_region: str = "World",
-) -> tuple[pd.DataFrame | None, str, list[str]]:
+) -> tuple[pd.DataFrame | None, str, list[str], Optional[str]]:
     """
     Run a single constraint check.
 
     Returns
     -------
-    result_df : pd.DataFrame or None
-    run_status: 'run' | 'skip'
-    missing   : list of missing variable names (empty if run_status == 'run')
+    result_df    : pd.DataFrame or None
+    run_status   : 'run' | 'skip'
+    missing      : list of missing variable names (empty if run_status == 'run')
+    unit_warning : str or None — red-flag message if values look implausible
     """
     missing = [v for v in constraint["required"] if v not in available_vars]
     if missing:
-        return None, "skip", missing
+        return None, "skip", missing, None
 
     special = constraint.get("special")
     if special == "pct_change":
@@ -571,7 +627,8 @@ def run_constraint(
         )
     )
     result["constraint_name"] = constraint["name"]
-    return result, "run", []
+    unit_warning = check_unit_plausibility(result, constraint)
+    return result, "run", [], unit_warning
 
 
 # ---------------------------------------------------------------------------
@@ -745,9 +802,10 @@ def main():
     skipped         = []   # list of (name, missing_vars)
     results         = []   # list of DataFrames, one per run constraint
     constraints_run = []   # list of constraint dicts that ran
+    unit_warnings   = []   # list of (name, warning_str) for plausibility flags
 
     for constraint in CONSTRAINTS:
-        result, status, missing = run_constraint(
+        result, status, missing, unit_warn = run_constraint(
             long, constraint, available_vars, available_years, args.world_region
         )
         if status == "skip":
@@ -756,6 +814,9 @@ def main():
         else:
             results.append(result)
             constraints_run.append(constraint)
+            if unit_warn:
+                print(f"\n  *** UNIT WARNING *** {unit_warn}")
+                unit_warnings.append((constraint["name"], unit_warn))
 
     # Reports
     report_constraints_overview(skipped, results, constraints_run)
@@ -778,6 +839,12 @@ def main():
     if skipped:
         pd.DataFrame(skipped, columns=["constraint_name", "missing_variables"]).to_csv(
             out_dir / "skipped.csv", index=False
+        )
+
+    # Unit warnings
+    if unit_warnings:
+        pd.DataFrame(unit_warnings, columns=["constraint_name", "warning"]).to_csv(
+            out_dir / "unit_warnings.csv", index=False
         )
 
     print(f"\n{'='*60}")

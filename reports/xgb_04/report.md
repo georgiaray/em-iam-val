@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 11:33
+**Generated:** 2026-05-05 11:54
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -305,6 +305,10 @@ validation family._
 
 
 _Skipped sub-checks (required variables absent from this run): ccs_2030_
+
+
+<p style="color:red;font-weight:bold">⚠️ nuclear_electricity_2030: ⚠️  POSSIBLE UNIT MISMATCH — median computed value (1.255e+04) is ~1046× higher than the expected reference (12 EJ/yr). Are you sure your units config is correct for Secondary Energy|Electricity|Nuclear?</p>
+
 
 
 ---

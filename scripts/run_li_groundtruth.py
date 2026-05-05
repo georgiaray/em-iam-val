@@ -294,6 +294,99 @@ def run_bounds(test_data, values, targets, run_id, percentile, use_empirical):
 
 
 # ---------------------------------------------------------------------------
+# Historical and domain knowledge constraint checks
+# ---------------------------------------------------------------------------
+
+def run_historical_constraints(test_data, values, targets, run_id,
+                                check_module_name, out_subdir, label):
+    """
+    Run hard_historical_constraints or soft_future_constraints against
+    Li et al. ground truth data. Mirrors the equivalent function in run_li_all.py.
+    """
+    import importlib
+    import pandas as pd
+    from sum_check import build_long
+
+    check_mod = importlib.import_module(check_module_name)
+
+    out_dir = _out_dir(run_id, out_subdir)
+    tee = _Tee(out_dir / "report.txt")
+    sys.stdout = tee
+    try:
+        print("=" * 60)
+        print(f"  {label.upper()} — Li ground truth")
+        print(f"  Run ID : {run_id}")
+        print("=" * 60)
+
+        long = build_long(test_data, values, targets, "ground_truth")
+
+        units_map = check_mod.load_units_map(REPO_ROOT)
+        long = check_mod.normalize_to_canonical(long, units_map)
+
+        available_vars  = set(long["Variable"].unique())
+        available_years = set(long["Year"].unique())
+
+        print(f"\n  Available years : {sorted(available_years)}")
+        print(f"  Available vars  : {len(available_vars)}")
+
+        skipped, results, constraints_run, unit_warnings = [], [], [], []
+
+        for constraint in check_mod.CONSTRAINTS:
+            result, status, missing, unit_warn = check_mod.run_constraint(
+                long, constraint, available_vars, available_years
+            )
+            if status == "skip":
+                print(f"\n  Skipping '{constraint['name']}': missing: {missing}")
+                skipped.append((constraint["name"], missing))
+            else:
+                results.append(result)
+                constraints_run.append(constraint)
+                if unit_warn:
+                    print(f"\n  *** UNIT WARNING *** {unit_warn}")
+                    unit_warnings.append((constraint["name"], unit_warn))
+
+        if results:
+            combined = pd.concat(results, ignore_index=True)
+            combined.to_csv(out_dir / "all_results.csv", index=False)
+            combined[combined["status"] == "FAIL"].to_csv(out_dir / "failures.csv", index=False)
+            if "WARN" in combined["status"].values:
+                combined[combined["status"] == "WARN"].to_csv(out_dir / "warnings.csv", index=False)
+
+            print(f"\n  Results summary:")
+            summary = (
+                combined.groupby("constraint_name")["status"]
+                .value_counts().unstack(fill_value=0).reset_index()
+            )
+            for _, row in summary.iterrows():
+                n_pass = row.get("PASS", 0)
+                n_fail = row.get("FAIL", 0)
+                total  = n_pass + n_fail + row.get("WARN", 0)
+                print(
+                    f"    {row['constraint_name']:<35}  "
+                    f"PASS {100*n_pass/total:5.1f}%  "
+                    f"FAIL {100*n_fail/total:5.1f}%"
+                )
+
+        if skipped:
+            pd.DataFrame(skipped, columns=["constraint_name", "missing_variables"]).to_csv(
+                out_dir / "skipped.csv", index=False
+            )
+
+        if unit_warnings:
+            pd.DataFrame(unit_warnings, columns=["constraint_name", "warning"]).to_csv(
+                out_dir / "unit_warnings.csv", index=False
+            )
+
+        print(f"\n  Saved to: {out_dir}")
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
+    finally:
+        tee.close()
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -337,13 +430,19 @@ def main():
         help="Exclude failed-vetting / no-climate-assessment scenarios (default: True)"
     )
     parser.add_argument(
-        "--no-plausibility", action="store_true", help="Skip plausibility check"
+        "--no-plausibility",    action="store_true", help="Skip plausibility check"
     )
     parser.add_argument(
-        "--no-sum-check",    action="store_true", help="Skip hierarchy sum check"
+        "--no-sum-check",       action="store_true", help="Skip hierarchy sum check"
     )
     parser.add_argument(
-        "--no-bounds",       action="store_true", help="Skip bounds check"
+        "--no-bounds",          action="store_true", help="Skip bounds check"
+    )
+    parser.add_argument(
+        "--no-hard-historical", action="store_true", help="Skip hard historical constraints check"
+    )
+    parser.add_argument(
+        "--no-soft-future",     action="store_true", help="Skip soft future constraints check"
     )
     parser.add_argument(
         "--report", action="store_true",
@@ -395,6 +494,30 @@ def main():
             run_id=args.run_id,
             percentile=args.percentile,
             use_empirical=not args.no_empirical,
+        )
+
+    if not args.no_hard_historical:
+        print(f"\n{'#'*60}")
+        print("  Running: Hard historical constraints check")
+        print(f"{'#'*60}")
+        results["hard_historical_constraints (GT)"] = run_historical_constraints(
+            test_data, values, targets,
+            run_id=args.run_id,
+            check_module_name="hard_historical_constraints",
+            out_subdir="hard_historical_constraints_ground_truth",
+            label="Hard historical constraints (AR6 2020 anchors)",
+        )
+
+    if not args.no_soft_future:
+        print(f"\n{'#'*60}")
+        print("  Running: Soft future constraints check")
+        print(f"{'#'*60}")
+        results["soft_future_constraints (GT)"] = run_historical_constraints(
+            test_data, values, targets,
+            run_id=args.run_id,
+            check_module_name="soft_future_constraints",
+            out_subdir="soft_future_constraints_ground_truth",
+            label="Soft future constraints (AR6 domain plausibility)",
         )
 
     # Summary
