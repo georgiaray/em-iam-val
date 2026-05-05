@@ -64,11 +64,24 @@ def check_grouping(
     if not present_regions:
         return pd.DataFrame()
 
+    # Only check rows where ALL regions in the grouping have data.
+    # Partial sums (missing regions treated as 0) produce meaningless relative errors.
+    complete = pivot[present_regions].notna().all(axis=1)
+    pivot = pivot[complete].copy()
+    if pivot.empty:
+        return pd.DataFrame()
+
     pivot["regional_sum"] = pivot[present_regions].sum(axis=1)
     pivot["world_value"]  = pivot["World"]
     pivot["residual"]     = (pivot["world_value"] - pivot["regional_sum"]).abs()
+    # Also skip rows where |World| < abs_floor — relative tolerance is meaningless
+    # when World crosses zero (e.g. CO2 in near-net-zero scenarios).
     pivot["tolerance"]    = (pivot["world_value"].abs() * threshold).clip(lower=abs_floor)
-    pivot["Status"]       = np.where(pivot["residual"] <= pivot["tolerance"], "PASS", "FAIL")
+    pivot["Status"]       = np.where(
+        pivot["world_value"].abs() < abs_floor,
+        "SKIP",
+        np.where(pivot["residual"] <= pivot["tolerance"], "PASS", "FAIL")
+    )
     pivot["Grouping"]     = grouping_name
     pivot["Region"]       = "World"
 

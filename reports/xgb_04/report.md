@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 15:34
+**Generated:** 2026-05-05 15:45
 **Results:** `results/xgb_04/`
 
 ---
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | Hierarchy Sum Check | Scenario-region pass rate | 1.3% | 66.4% |
 |  | Mean relative error | 6.538% | 1.365% |
-| Growth Rate Plausibility | Timestep violation rate | 3.4% | 1.9% |
+| Growth Rate Plausibility | Timestep violation rate | 12.6% | 16.9% |
 | Regional Consistency | Scenario × variable pass rate | 0.0% | 0.0% |
 | Physical Bounds Check | Timestep violation rate | 3.72% | 1.59% |
 | Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
@@ -57,10 +57,10 @@ _For each predicted trajectory, checks that period-on-period growth rates
 fall within empirically-derived bounds from the ground truth data._
 
 **Total timesteps evaluated:** 419,995  
-**Violations:** 14,291 (3.40%)  
+**Violations:** 52,953 (12.61%)  
 
-**Ground truth — violation rate:** 1.94%  
-_(+1.46pp difference: predictions vs ground truth)_
+**Ground truth — violation rate:** 16.89%  
+_(-4.29pp difference: predictions vs ground truth)_
 
 ### Violation Rate by Variable
 
@@ -70,15 +70,15 @@ _(+1.46pp difference: predictions vs ground truth)_
 
 | Category | Timesteps | Violations | Violation rate (%) |
 | --- | --- | --- | --- |
-| C6 | 42883 | 1613 | 3.7600 |
-| C4 | 60743 | 2262 | 3.7200 |
-| C2 | 48716 | 1775 | 3.6400 |
-| C3 | 123215 | 4339 | 3.5200 |
-| C1 | 29697 | 1035 | 3.4900 |
-| C5 | 66880 | 2117 | 3.1700 |
-| C7 | 34694 | 1017 | 2.9300 |
-| C8 | 3097 | 88 | 2.8400 |
-| no-climate-assessment | 10070 | 45 | 0.4500 |
+| C2 | 48716 | 6770 | 13.9000 |
+| C1 | 29697 | 4122 | 13.8800 |
+| C3 | 123215 | 16981 | 13.7800 |
+| C6 | 42883 | 5659 | 13.2000 |
+| C4 | 60743 | 7832 | 12.8900 |
+| C5 | 66880 | 7305 | 10.9200 |
+| C7 | 34694 | 3524 | 10.1600 |
+| C8 | 3097 | 280 | 9.0400 |
+| no-climate-assessment | 10070 | 480 | 4.7700 |
 
 ---
 
@@ -91,17 +91,17 @@ _Checks that predicted World values equal the sum of predicted subregion values
 
 | Grouping | Total | Passed | Pass rate (%) | Mean error (%) | Max error (%) |
 | --- | --- | --- | --- | --- | --- |
-| R10 | 8911 | 0 | 0.0000 | 27.6770 | 121992.0173 |
-| R5 | 9861 | 0 | 0.0000 | 23.1956 | 27922.4781 |
-| R6 | 4427 | 0 | 0.0000 | 52.3002 | 74162.6795 |
+| R10 | 8911 | 0 | 0.0000 | 102.4671 | 72430.5507 |
+| R5 | 9861 | 0 | 0.0000 | 97.3127 | 26572.6901 |
+| R6 | 4427 | 0 | 0.0000 | 100.6412 | 74162.6795 |
 
 ### Pass Rates by Regional Grouping — Ground Truth
 
 | Grouping | Total | Passed | Pass rate (%) | Mean error (%) | Max error (%) |
 | --- | --- | --- | --- | --- | --- |
-| R10 | 8911 | 0 | 0.0000 | 7207.5346 | 583561176.9541 |
-| R5 | 9861 | 0 | 0.0000 | 41443.5449 | 5453563053.7464 |
-| R6 | 4427 | 0 | 0.0000 | 316.4751 | 16519328.4625 |
+| R10 | 8911 | 0 | 0.0000 | 103.8467 | 31624.4313 |
+| R5 | 9861 | 0 | 0.0000 | 124.1467 | 242375.6550 |
+| R6 | 4427 | 0 | 0.0000 | 105.5932 | 120036.1996 |
 
 ### Pass Rate by Variable
 

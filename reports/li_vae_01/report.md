@@ -1,7 +1,7 @@
 # Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-05 15:34
+**Generated:** 2026-05-05 15:45
 **Results:** `results/li_vae_01/`
 
 ---
@@ -10,9 +10,9 @@
 
 | Check | Metric | Predictions | Ground Truth |
 | --- | --- | --- | --- |
-| Hierarchy Sum Check | Scenario-region pass rate | 0.0% | 59.0% |
-|  | Mean relative error | 2085.076% | 2080985791.706% |
-| Growth Rate Plausibility | Timestep violation rate | 16.5% | 2.4% |
+| Hierarchy Sum Check | Scenario-region pass rate | 0.0% | 58.9% |
+|  | Mean relative error | 2019.856% | 10.095% |
+| Growth Rate Plausibility | Timestep violation rate | 21.9% | 11.5% |
 | Physical Bounds Check | Timestep violation rate | 24.01% | 1.42% |
 | Inter-variable Correlations | Mean \|Δr²\| vs ground truth | 0.1383 | 0.0000 (reference) |
 
@@ -28,7 +28,7 @@ rate quantifies how much the model violates IAM accounting identities._
 
 | Parent Variable | Scenario-regions | Pass rate (%) | Mean error (%) | Max error (%) |
 | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity | 30000 | 0.0000 | 2085.0765 | 152384.9984 |
+| Secondary Energy\|Electricity | 30000 | 0.0000 | 2019.8564 | 44942.0074 |
 
 ### Error Distribution
 
@@ -42,11 +42,11 @@ rate quantifies how much the model violates IAM accounting identities._
 
 | Percentile | Predictions (%) | Ground truth (%) |
 | --- | --- | --- |
-| p50 | 1496.2905 | 0.8424 |
-| p75 | 2260.8794 | 1.8137 |
-| p90 | 3887.7720 | 3.3658 |
-| p95 | 5084.0905 | 5.8445 |
-| p99 | 9250.2007 | 11.4583 |
+| p50 | 1495.9180 | 0.8424 |
+| p75 | 2251.1809 | 1.8139 |
+| p90 | 3837.0541 | 3.3668 |
+| p95 | 5033.2191 | 5.8508 |
+| p99 | 8124.1684 | 11.4583 |
 
 ---
 
@@ -56,10 +56,10 @@ _For each predicted trajectory, checks that period-on-period growth rates
 fall within empirically-derived bounds from the ground truth data._
 
 **Total timesteps evaluated:** 3,840,000  
-**Violations:** 635,187 (16.54%)  
+**Violations:** 841,261 (21.91%)  
 
-**Ground truth — violation rate:** 2.37%  
-_(+14.17pp difference: predictions vs ground truth)_
+**Ground truth — violation rate:** 11.54%  
+_(+10.37pp difference: predictions vs ground truth)_
 
 ### Violation Rate by Variable
 
@@ -69,9 +69,9 @@ _(+14.17pp difference: predictions vs ground truth)_
 
 | Category | Timesteps | Violations | Violation rate (%) |
 | --- | --- | --- | --- |
-| C1234 | 1280000 | 246522 | 19.2600 |
-| C56 | 1280000 | 210494 | 16.4400 |
-| C78 | 1280000 | 178171 | 13.9200 |
+| C1234 | 1280000 | 301610 | 23.5600 |
+| C56 | 1280000 | 278908 | 21.7900 |
+| C78 | 1280000 | 260743 | 20.3700 |
 
 ---
 

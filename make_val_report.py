@@ -98,7 +98,15 @@ def _adapt_sum_results(df: pd.DataFrame, threshold: float = 0.012) -> tuple:
     if df is None or df.empty:
         return None, None
     df = df.copy()
-    df["abs_error"] = (df["Residual"] / df["Parent_Value"].abs()).fillna(0)
+    # Rows where |parent| < abs_floor are excluded from the mean (set to NaN),
+    # matching the old behaviour — dividing by a near-zero denominator produces
+    # meaningless huge relative errors.
+    abs_floor = 1.0
+    df["abs_error"] = np.where(
+        df["Parent_Value"].abs() < abs_floor,
+        np.nan,
+        df["Residual"] / df["Parent_Value"].abs(),
+    )
     df["passed_timestep"] = df["Status"] == "PASS"
     df["parent_variable"] = df["Parent"]
     df["total"] = df["Parent_Value"]
@@ -153,8 +161,17 @@ def _adapt_regional(df: pd.DataFrame):
     if df is None or df.empty:
         return None
     df = df.copy()
+    # Exclude SKIP rows (World near zero) and near-zero World values from
+    # relative error calculations — dividing by a near-zero denominator produces
+    # meaningless huge percentages (e.g. CO2 crossing zero in net-zero scenarios).
+    abs_floor = 1.0
+    df = df[df["Status"] != "SKIP"].copy()
     df["passed"] = df["Status"] == "PASS"
-    df["rel_error"] = (df["Residual"] / df["World_Value"].abs()).fillna(0)
+    df["rel_error"] = np.where(
+        df["World_Value"].abs() < abs_floor,
+        np.nan,
+        df["Residual"] / df["World_Value"].abs(),
+    )
     df["grouping"] = df["Grouping"]
     IDX = ["Model", "Scenario", "Region", "Scenario_Category"]
     sc = (

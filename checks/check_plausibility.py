@@ -42,11 +42,18 @@ def compute_growth_rates(long: pd.DataFrame) -> pd.DataFrame:
     # Drop first row of each group (no previous value)
     df = df.dropna(subset=["prev_value", "prev_year"])
 
-    # Compute growth rate
-    df["Growth_Rate"] = (df["Value"] - df["prev_value"]) / df["prev_value"].abs()
-    # Where denominator is zero, set to inf (flagged as violation)
-    df.loc[df["prev_value"] == 0, "Growth_Rate"] = np.where(
-        df.loc[df["prev_value"] == 0, "Value"] != 0, np.inf, 0.0
+    # Compute growth rate.
+    # Where |prev_value| < abs_floor the denominator is too small for a meaningful
+    # relative rate — set to NaN so the transition is excluded from both bound
+    # derivation and violation flagging.  This avoids spurious 10,000x+ growth
+    # rates from variables that start near zero (e.g. CCS, Geothermal, Oil in
+    # early years).  The == 0 case is a subset of this.
+    abs_floor = 1.0
+    near_zero = df["prev_value"].abs() < abs_floor
+    df["Growth_Rate"] = np.where(
+        near_zero,
+        np.nan,
+        (df["Value"] - df["prev_value"]) / df["prev_value"].abs(),
     )
 
     return df[IDX + ["Variable", "prev_year", "Year", "Growth_Rate"]].rename(
