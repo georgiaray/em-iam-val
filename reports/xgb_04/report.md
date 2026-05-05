@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-05-05 16:03
+**Generated:** 2026-05-05 16:05
 **Results:** `results/xgb_04/`
 
 ---
@@ -13,7 +13,6 @@
 | 1. Hierarchy Sum Check | — | Pass rate | 1.3% | — | 98.7% | 66.4% | — | 33.6% |
 |  | — | Mean relative error | 6.538% | — | — | 1.365% | — | — |
 | 2. Growth Rate Plausibility | — | Pass rate (timesteps) | 87.4% | — | 12.6% | 83.1% | — | — |
-| 3. Regional Consistency | — | Pass rate (scenario × variable) | 0.0% | — | 100.0% | 0.0% | — | — |
 | 4. Physical Bounds Check | — | Pass rate (timesteps) | 96.3% | — | 3.7% | 98.4% | — | — |
 | 5. Hard Historical Constraints | co2_change_2010_2020 (best) | — | 100.0% | 0.0% | 0.0% | 100.0% | 0.0% | 0.0% |
 |  | solar_wind_2020 (worst) | — | 55.1% | 9.0% | 36.0% | 49.4% | 15.7% | 34.8% |
@@ -158,25 +157,8 @@ _The most extreme growth rate violation is shown below._
 _Checks that predicted World values equal the sum of predicted subregion values
 (R5 / R6 / R10 groupings). Only applicable to datasets with regional breakdowns._
 
-### Pass Rates by Regional Grouping — Predictions
+_Regional consistency results not found. Run `validate.py` first, or skip if your run has no multi-region scenarios._
 
-| Grouping | Total | Passed | Pass rate (%) | Mean error (%) | Max error (%) |
-| --- | --- | --- | --- | --- | --- |
-| R10 | 8911 | 0 | 0.0000 | 102.4671 | 72430.5507 |
-| R5 | 9861 | 0 | 0.0000 | 97.3127 | 26572.6901 |
-| R6 | 4427 | 0 | 0.0000 | 100.6412 | 74162.6795 |
-
-### Pass Rates by Regional Grouping — Ground Truth
-
-| Grouping | Total | Passed | Pass rate (%) | Mean error (%) | Max error (%) |
-| --- | --- | --- | --- | --- | --- |
-| R10 | 8911 | 0 | 0.0000 | 103.8467 | 31624.4313 |
-| R5 | 9861 | 0 | 0.0000 | 124.1467 | 242375.6550 |
-| R6 | 4427 | 0 | 0.0000 | 105.5932 | 120036.1996 |
-
-### Pass Rate by Variable
-
-![Regional consistency by variable](figures/regional_consistency_by_variable.png)
 
 ---
 
