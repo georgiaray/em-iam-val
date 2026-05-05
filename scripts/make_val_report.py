@@ -910,6 +910,179 @@ def section_bounds(results_base: Path, fig_dir: Path) -> tuple[str, list]:
 
 
 # ---------------------------------------------------------------------------
+# Hard historical constraints
+# ---------------------------------------------------------------------------
+
+def section_hard_historical(results_base: Path) -> str:
+    """
+    Summarise results from hard_historical_constraints.py.
+    Reads all_results.csv and skipped.csv if present.
+    """
+    check_dir = results_base / "hard_historical_constraints"
+    gt_dir    = results_base / "hard_historical_constraints_ground_truth"
+
+    if not check_dir.exists():
+        return "_Hard historical constraints results not found. Run `hard_historical_constraints.py` first._\n"
+
+    blocks = []
+
+    # Load results
+    results_path = check_dir / "all_results.csv"
+    if not results_path.exists():
+        return "_Hard historical constraints: all_results.csv not found._\n"
+
+    df = pd.read_csv(results_path)
+
+    # Summary table per constraint
+    summary = (
+        df.groupby("constraint_name")["status"]
+        .value_counts()
+        .unstack(fill_value=0)
+        .reset_index()
+    )
+    for col in ["PASS", "WARN", "FAIL"]:
+        if col not in summary.columns:
+            summary[col] = 0
+    summary["total"] = summary[["PASS", "WARN", "FAIL"]].sum(axis=1)
+    summary["pass_%"] = (100 * summary["PASS"] / summary["total"]).round(1)
+    summary["warn_%"] = (100 * summary["WARN"] / summary["total"]).round(1)
+    summary["fail_%"] = (100 * summary["FAIL"] / summary["total"]).round(1)
+
+    # Ground truth comparison if available
+    gt_df = None
+    if gt_dir.exists() and (gt_dir / "all_results.csv").exists():
+        gt_df = pd.read_csv(gt_dir / "all_results.csv")
+        gt_summary = (
+            gt_df.groupby("constraint_name")["status"]
+            .value_counts()
+            .unstack(fill_value=0)
+            .reset_index()
+        )
+        for col in ["PASS", "WARN", "FAIL"]:
+            if col not in gt_summary.columns:
+                gt_summary[col] = 0
+        gt_summary["total"] = gt_summary[["PASS", "WARN", "FAIL"]].sum(axis=1)
+        gt_summary["gt_pass_%"] = (100 * gt_summary["PASS"] / gt_summary["total"]).round(1)
+        gt_summary["gt_fail_%"] = (100 * gt_summary["FAIL"] / gt_summary["total"]).round(1)
+        summary = summary.merge(
+            gt_summary[["constraint_name", "gt_pass_%", "gt_fail_%"]],
+            on="constraint_name", how="left"
+        )
+
+    # Render table
+    tbl_cols = ["constraint_name", "total", "pass_%", "warn_%", "fail_%"]
+    if gt_df is not None:
+        tbl_cols += ["gt_pass_%", "gt_fail_%"]
+
+    display = summary[tbl_cols].rename(columns={
+        "constraint_name": "Sub-check",
+        "total": "N",
+        "pass_%": "Pass (%)",
+        "warn_%": "Warn (%)",
+        "fail_%": "Fail (%)",
+        "gt_pass_%": "GT Pass (%)",
+        "gt_fail_%": "GT Fail (%)",
+    })
+    blocks.append(md_table(display, fmt={"N": "{}"}))
+
+    # Skipped checks
+    skipped_path = check_dir / "skipped.csv"
+    if skipped_path.exists():
+        sk = pd.read_csv(skipped_path)
+        if not sk.empty:
+            skipped_list = ", ".join(sk["constraint_name"].tolist())
+            blocks.append(
+                f"\n_Skipped sub-checks (required variables absent from this run): "
+                f"{skipped_list}_"
+            )
+
+    return "\n\n".join(blocks) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Soft future constraints
+# ---------------------------------------------------------------------------
+
+def section_soft_future(results_base: Path) -> str:
+    """
+    Summarise results from soft_future_constraints.py.
+    Reads all_results.csv and skipped.csv if present.
+    """
+    check_dir = results_base / "soft_future_constraints"
+    gt_dir    = results_base / "soft_future_constraints_ground_truth"
+
+    if not check_dir.exists():
+        return "_Soft future constraints results not found. Run `soft_future_constraints.py` first._\n"
+
+    results_path = check_dir / "all_results.csv"
+    if not results_path.exists():
+        return "_Soft future constraints: all_results.csv not found._\n"
+
+    df = pd.read_csv(results_path)
+    blocks = []
+
+    summary = (
+        df.groupby("constraint_name")["status"]
+        .value_counts()
+        .unstack(fill_value=0)
+        .reset_index()
+    )
+    for col in ["PASS", "FAIL"]:
+        if col not in summary.columns:
+            summary[col] = 0
+    summary["total"]  = summary[["PASS", "FAIL"]].sum(axis=1)
+    summary["pass_%"] = (100 * summary["PASS"] / summary["total"]).round(1)
+    summary["fail_%"] = (100 * summary["FAIL"] / summary["total"]).round(1)
+
+    # Ground truth comparison
+    gt_df = None
+    if gt_dir.exists() and (gt_dir / "all_results.csv").exists():
+        gt_df = pd.read_csv(gt_dir / "all_results.csv")
+        gt_summary = (
+            gt_df.groupby("constraint_name")["status"]
+            .value_counts()
+            .unstack(fill_value=0)
+            .reset_index()
+        )
+        for col in ["PASS", "FAIL"]:
+            if col not in gt_summary.columns:
+                gt_summary[col] = 0
+        gt_summary["total"]     = gt_summary[["PASS", "FAIL"]].sum(axis=1)
+        gt_summary["gt_pass_%"] = (100 * gt_summary["PASS"] / gt_summary["total"]).round(1)
+        gt_summary["gt_fail_%"] = (100 * gt_summary["FAIL"] / gt_summary["total"]).round(1)
+        summary = summary.merge(
+            gt_summary[["constraint_name", "gt_pass_%", "gt_fail_%"]],
+            on="constraint_name", how="left"
+        )
+
+    tbl_cols = ["constraint_name", "total", "pass_%", "fail_%"]
+    if gt_df is not None:
+        tbl_cols += ["gt_pass_%", "gt_fail_%"]
+
+    display = summary[tbl_cols].rename(columns={
+        "constraint_name": "Sub-check",
+        "total": "N",
+        "pass_%": "Pass (%)",
+        "fail_%": "Fail (%)",
+        "gt_pass_%": "GT Pass (%)",
+        "gt_fail_%": "GT Fail (%)",
+    })
+    blocks.append(md_table(display, fmt={"N": "{}"}))
+
+    skipped_path = check_dir / "skipped.csv"
+    if skipped_path.exists():
+        sk = pd.read_csv(skipped_path)
+        if not sk.empty:
+            skipped_list = ", ".join(sk["constraint_name"].tolist())
+            blocks.append(
+                f"\n_Skipped sub-checks (required variables absent from this run): "
+                f"{skipped_list}_"
+            )
+
+    return "\n\n".join(blocks) + "\n"
+
+
+# ---------------------------------------------------------------------------
 # Inter-variable correlations
 # ---------------------------------------------------------------------------
 
@@ -1122,7 +1295,10 @@ def main():
 
     # Detect which checks have results
     checks_run = []
-    for check in ["sum_check", "plausibility", "regional_consistency", "bounds_check"]:
+    for check in [
+        "sum_check", "plausibility", "regional_consistency", "bounds_check",
+        "hard_historical_constraints", "soft_future_constraints",
+    ]:
         if (results_base / check).exists():
             checks_run.append(check)
             print(f"  Found: {check}/")
@@ -1145,6 +1321,12 @@ def main():
 
     print("  Generating bounds check section...")
     bc_body, bc_figs = section_bounds(results_base, fig_dir)
+
+    print("  Generating hard historical constraints section...")
+    hh_body = section_hard_historical(results_base)
+
+    print("  Generating soft future constraints section...")
+    sf_body = section_soft_future(results_base)
 
     print("  Generating inter-variable correlations section...")
     co_body, co_figs = section_correlations(results_base, fig_dir)
@@ -1208,7 +1390,33 @@ and empirical per-variable bounds derived from the AR6 test-set ground truth._
 
 ---
 
-## 5. Inter-variable Correlations
+## 5. Hard Historical Constraints
+
+_Checks predicted values at the 2020 reference year against the historical anchor
+values used in the AR6 scenario vetting process (Nicholls et al. 2022, Table 11).
+Each sub-check has an outer tolerance (PASS/FAIL) and an inner IP-range tolerance
+(WARN if within outer but outside inner). Sub-checks requiring absent variables are
+skipped and listed below. Belongs to the **historical and domain knowledge comparison**
+validation family._
+
+{hh_body}
+
+---
+
+## 6. Soft Future Constraints
+
+_Checks predicted values at specific future years against domain-knowledge plausibility
+bounds from the AR6 vetting process (Nicholls et al. 2022, Table 11). These were
+flagged in AR6 as potentially problematic but not used as hard exclusion criteria.
+Warranted here via the constraint-violation argument: the IAMs were themselves vetted
+against these criteria. Belongs to the **historical and domain knowledge comparison**
+validation family._
+
+{sf_body}
+
+---
+
+## 7. Inter-variable Correlations
 
 _Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
 predictions against AR6 ground truth. A well-calibrated emulator should preserve

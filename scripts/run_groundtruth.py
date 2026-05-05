@@ -9,10 +9,12 @@ Should be run after run_all.py (or at least after the individual prediction
 checks), since make_val_report.py expects both sets of results to exist.
 
 Checks run (all with --use_ground_truth):
-  - check_plausibility   → results/xgb/<run_id>/plausibility_ground_truth/
-  - sum_check            → results/xgb/<run_id>/sum_check_ground_truth/
-  - regional_consistency → results/xgb/<run_id>/regional_consistency_ground_truth/
-  - bounds_check         → results/xgb/<run_id>/bounds_check_ground_truth/
+  - check_plausibility          → results/xgb/<run_id>/plausibility_ground_truth/
+  - sum_check                   → results/xgb/<run_id>/sum_check_ground_truth/
+  - regional_consistency        → results/xgb/<run_id>/regional_consistency_ground_truth/
+  - bounds_check                → results/xgb/<run_id>/bounds_check_ground_truth/
+  - hard_historical_constraints → results/xgb/<run_id>/hard_historical_constraints_ground_truth/
+  - soft_future_constraints     → results/xgb/<run_id>/soft_future_constraints_ground_truth/
 
 For plausibility, empirical bounds are still derived from the ground truth;
 the check then flags whether the ground truth itself falls within those bounds.
@@ -94,10 +96,12 @@ def main():
         "--by_category", action="store_true",
         help="Break down plausibility violations by scenario category"
     )
-    parser.add_argument("--no-plausibility", action="store_true", help="Skip plausibility check")
-    parser.add_argument("--no-sum-check",    action="store_true", help="Skip sum check")
-    parser.add_argument("--no-regional",     action="store_true", help="Skip regional consistency check")
-    parser.add_argument("--no-bounds",       action="store_true", help="Skip bounds check")
+    parser.add_argument("--no-plausibility",    action="store_true", help="Skip plausibility check")
+    parser.add_argument("--no-sum-check",       action="store_true", help="Skip sum check")
+    parser.add_argument("--no-regional",        action="store_true", help="Skip regional consistency check")
+    parser.add_argument("--no-bounds",          action="store_true", help="Skip bounds check")
+    parser.add_argument("--no-hard-historical", action="store_true", help="Skip hard historical constraints check")
+    parser.add_argument("--no-soft-future",     action="store_true", help="Skip soft future constraints check")
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
@@ -151,6 +155,24 @@ def main():
         if args.no_empirical:
             argv.append("--no_empirical")
         results["bounds_check (GT)"] = run_check("bounds_check", "Physical bounds check", argv)
+
+    # --- Ground truth hard historical constraints ---
+    if not args.no_hard_historical:
+        argv = ["--run_id", args.run_id, "--use_ground_truth"]
+        results["hard_historical_constraints (GT)"] = run_check(
+            "hard_historical_constraints",
+            "Hard historical constraints check (AR6 2020 anchors)",
+            argv,
+        )
+
+    # --- Ground truth soft future constraints ---
+    if not args.no_soft_future:
+        argv = ["--run_id", args.run_id, "--use_ground_truth"]
+        results["soft_future_constraints (GT)"] = run_check(
+            "soft_future_constraints",
+            "Soft future constraints check (AR6 domain plausibility)",
+            argv,
+        )
 
     # --- Summary ---
     print(f"\n{'='*60}")

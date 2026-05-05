@@ -1,7 +1,7 @@
 # Validation Report: xgb_04
 
 **Run ID:** `xgb_04`
-**Generated:** 2026-04-16 19:46
+**Generated:** 2026-05-05 11:15
 **Results path:** `results/xgb/xgb_04/`
 
 ---
@@ -265,7 +265,51 @@ _The most extreme violation (largest % deviation from the breached bound) is sho
 
 ---
 
-## 5. Inter-variable Correlations
+## 5. Hard Historical Constraints
+
+_Checks predicted values at the 2020 reference year against the historical anchor
+values used in the AR6 scenario vetting process (Nicholls et al. 2022, Table 11).
+Each sub-check has an outer tolerance (PASS/FAIL) and an inner IP-range tolerance
+(WARN if within outer but outside inner). Sub-checks requiring absent variables are
+skipped and listed below. Belongs to the **historical and domain knowledge comparison**
+validation family._
+
+| Sub-check | N | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- | --- |
+| ch4_2020 | 1364 | 5.8000 | 0.0000 | 94.2000 | 5.8000 | 94.2000 |
+| co2_change_2010_2020 | 18 | 100.0000 | 0.0000 | 0.0000 | 100.0000 | 0.0000 |
+| co2_eip_2020 | 1364 | 3.5000 | 2.6000 | 93.8000 | 3.2000 | 93.9000 |
+| nuclear_energy_2020 | 1364 | 0.1000 | 0.3000 | 99.6000 | 0.0000 | 100.0000 |
+| solar_wind_2020 | 1364 | 0.6000 | 0.2000 | 99.2000 | 0.7000 | 98.4000 |
+
+
+_Skipped sub-checks (required variables absent from this run): ccs_2020, primary_energy_2020_
+
+
+---
+
+## 6. Soft Future Constraints
+
+_Checks predicted values at specific future years against domain-knowledge plausibility
+bounds from the AR6 vetting process (Nicholls et al. 2022, Table 11). These were
+flagged in AR6 as potentially problematic but not used as hard exclusion criteria.
+Warranted here via the constraint-violation argument: the IAMs were themselves vetted
+against these criteria. Belongs to the **historical and domain knowledge comparison**
+validation family._
+
+| Sub-check | N | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
+| --- | --- | --- | --- | --- | --- |
+| ch4_2040 | 1972 | 11.0000 | 89.0000 | 10.8000 | 89.2000 |
+| co2_not_negative_2030 | 1922 | 99.6000 | 0.4000 | 99.6000 | 0.4000 |
+| nuclear_electricity_2030 | 1922 | 8.4000 | 91.6000 | 9.5000 | 90.5000 |
+
+
+_Skipped sub-checks (required variables absent from this run): ccs_2030_
+
+
+---
+
+## 7. Inter-variable Correlations
 
 _Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
 predictions against AR6 ground truth. A well-calibrated emulator should preserve

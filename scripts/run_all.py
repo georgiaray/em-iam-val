@@ -22,6 +22,8 @@ Available flags:
     --no-sum-check        Skip the hierarchy sum check
     --no-regional         Skip the regional consistency check
     --no-bounds           Skip the bounds check
+    --no-hard-historical  Skip the hard historical constraints check
+    --no-soft-future      Skip the soft future constraints check
     --no-groundtruth      Skip the ground truth reference runs (run_groundtruth.py)
     --report              Generate a validation report after all checks complete
 
@@ -51,10 +53,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # To add a new check, append an entry here and create the corresponding module
 # in val_framework/. The module must expose a main() that accepts sys.argv.
 CHECKS = [
-    ("check_plausibility",   "Growth rate plausibility check"),
-    ("sum_check",            "Hierarchy sum check"),
-    ("regional_consistency", "Regional consistency check"),
-    ("bounds_check",         "Physical bounds check"),
+    ("check_plausibility",          "Growth rate plausibility check"),
+    ("sum_check",                   "Hierarchy sum check"),
+    ("regional_consistency",        "Regional consistency check"),
+    ("bounds_check",                "Physical bounds check"),
+    ("hard_historical_constraints", "Hard historical constraints check (AR6 2020 anchors)"),
+    ("soft_future_constraints",     "Soft future constraints check (AR6 domain plausibility)"),
 ]
 
 
@@ -114,10 +118,12 @@ def main():
         "--by_category", action="store_true",
         help="Break down plausibility violations by scenario category"
     )
-    parser.add_argument("--no-plausibility",  action="store_true", help="Skip plausibility check")
-    parser.add_argument("--no-sum-check",     action="store_true", help="Skip hierarchy sum check")
-    parser.add_argument("--no-regional",      action="store_true", help="Skip regional consistency check")
-    parser.add_argument("--no-bounds",        action="store_true", help="Skip bounds check")
+    parser.add_argument("--no-plausibility",     action="store_true", help="Skip plausibility check")
+    parser.add_argument("--no-sum-check",        action="store_true", help="Skip hierarchy sum check")
+    parser.add_argument("--no-regional",         action="store_true", help="Skip regional consistency check")
+    parser.add_argument("--no-bounds",           action="store_true", help="Skip bounds check")
+    parser.add_argument("--no-hard-historical",  action="store_true", help="Skip hard historical constraints check")
+    parser.add_argument("--no-soft-future",      action="store_true", help="Skip soft future constraints check")
     parser.add_argument("--no-groundtruth",   action="store_true",
                         help="Skip ground truth reference runs (skips run_groundtruth.py)")
     parser.add_argument("--report",           action="store_true",
@@ -125,10 +131,12 @@ def main():
     args = parser.parse_args()
 
     skip = set()
-    if args.no_plausibility: skip.add("check_plausibility")
-    if args.no_sum_check:    skip.add("sum_check")
-    if args.no_regional:     skip.add("regional_consistency")
-    if args.no_bounds:       skip.add("bounds_check")
+    if args.no_plausibility:    skip.add("check_plausibility")
+    if args.no_sum_check:       skip.add("sum_check")
+    if args.no_regional:        skip.add("regional_consistency")
+    if args.no_bounds:          skip.add("bounds_check")
+    if args.no_hard_historical: skip.add("hard_historical_constraints")
+    if args.no_soft_future:     skip.add("soft_future_constraints")
 
     print(f"\n{'='*60}")
     print(f"  ML-IAM VALIDATION FRAMEWORK")
@@ -179,6 +187,24 @@ def main():
             "bounds_check", "Physical bounds check", argv
         )
 
+    # --- Hard historical constraints ---
+    if "hard_historical_constraints" not in skip:
+        argv = ["--run_id", args.run_id]
+        results["hard_historical_constraints"] = run_check(
+            "hard_historical_constraints",
+            "Hard historical constraints check (AR6 2020 anchors)",
+            argv,
+        )
+
+    # --- Soft future constraints ---
+    if "soft_future_constraints" not in skip:
+        argv = ["--run_id", args.run_id]
+        results["soft_future_constraints"] = run_check(
+            "soft_future_constraints",
+            "Soft future constraints check (AR6 domain plausibility)",
+            argv,
+        )
+
     # --- Ground truth reference runs ---
     if not args.no_groundtruth:
         gt_argv = [
@@ -187,13 +213,15 @@ def main():
             "--abs_floor", str(args.abs_floor),
             "--percentile", str(args.percentile),
         ]
-        if args.no_plausibility: gt_argv.append("--no-plausibility")
-        if args.no_sum_check:    gt_argv.append("--no-sum-check")
-        if args.no_regional:     gt_argv.append("--no-regional")
-        if args.no_bounds:       gt_argv.append("--no-bounds")
-        if args.no_empirical:    gt_argv.append("--no_empirical")
-        if args.by_category:     gt_argv.append("--by_category")
-        if args.grouping:        gt_argv += ["--grouping", args.grouping]
+        if args.no_plausibility:    gt_argv.append("--no-plausibility")
+        if args.no_sum_check:       gt_argv.append("--no-sum-check")
+        if args.no_regional:        gt_argv.append("--no-regional")
+        if args.no_bounds:          gt_argv.append("--no-bounds")
+        if args.no_hard_historical: gt_argv.append("--no-hard-historical")
+        if args.no_soft_future:     gt_argv.append("--no-soft-future")
+        if args.no_empirical:       gt_argv.append("--no_empirical")
+        if args.by_category:        gt_argv.append("--by_category")
+        if args.grouping:           gt_argv += ["--grouping", args.grouping]
         results["run_groundtruth"] = run_check(
             "run_groundtruth", "Ground truth reference runs", gt_argv
         )
