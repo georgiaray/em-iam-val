@@ -19,6 +19,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "checks"))
+from utils import long_to_iamc
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -110,16 +113,14 @@ def _load_generated(model: str, data_path=None, labels_path=None):
 
     records = []
     for i in range(n_scenarios):
-        cat = CATEGORY_MAP.get(int(gen_labels[i]), f"C{int(gen_labels[i])}")
         for t, year in enumerate(TIMESTEPS):
             records.append({
-                "Model":             model_label,
-                "Scenario":          scenario_ids[i],
-                "Region":            "World",
-                "Scenario_Category": cat,
-                "Year":              year,
-                "_si":               i,
-                "_ti":               t,
+                "Model":    model_label,
+                "Scenario": scenario_ids[i],
+                "Region":   "World",
+                "Year":     year,
+                "_si":      i,
+                "_ti":      t,
             })
 
     index_df = pd.DataFrame(records)
@@ -197,17 +198,18 @@ def _load_ground_truth(li_path=None, drop_failed=True):
 
     combined = pd.concat(long_dfs, ignore_index=True)
     combined["Region"] = "World"
-    combined = combined.rename(columns={"Category": "Scenario_Category"})
 
     if drop_failed:
-        mask = combined["Scenario_Category"].isin(FAILED_VETTING)
+        mask = combined["Category"].isin(FAILED_VETTING)
         n_dropped = combined.loc[mask, "Scenario"].nunique()
         if n_dropped:
             combined = combined[~mask].copy()
             print(f"\n  [info ] Dropped {n_dropped} failed-vetting / no-climate-assessment scenarios")
 
+    combined = combined.drop(columns=["Category"])
+
     wide = combined.pivot_table(
-        index=["Model", "Scenario", "Region", "Scenario_Category", "Year"],
+        index=["Model", "Scenario", "Region", "Year"],
         columns="Variable", values="Value", aggfunc="first",
     ).reset_index()
     wide.columns.name = None
@@ -219,11 +221,11 @@ def _load_ground_truth(li_path=None, drop_failed=True):
             targets.append(v)
             seen.add(v)
 
-    index_cols = ["Model", "Scenario", "Region", "Scenario_Category", "Year"]
+    index_cols = ["Model", "Scenario", "Region", "Year"]
     test_data = wide[index_cols].copy()
     values    = wide[targets].to_numpy(dtype=float)
 
-    print(f"\n  Loaded {len(test_data):,} rows | {len(targets)} variables | {test_data['Scenario'].nunique()} unique scenarios")
+    print(f"\n  Loaded {len(test_data):,} rows | {len(targets)} variables | {wide['Scenario'].nunique()} unique scenarios")
     return test_data, values, targets
 
 
@@ -233,7 +235,7 @@ def _load_ground_truth(li_path=None, drop_failed=True):
 
 def _build_canonical_long(test_data: pd.DataFrame, values: np.ndarray,
                            targets: list[str]) -> pd.DataFrame:
-    index_cols = ["Model", "Scenario", "Region", "Scenario_Category", "Year"]
+    index_cols = ["Model", "Scenario", "Region", "Year"]
     idx  = test_data[index_cols].reset_index(drop=True)
     wide = pd.DataFrame(values, columns=targets)
     combined = pd.concat([idx, wide], axis=1)
@@ -242,8 +244,7 @@ def _build_canonical_long(test_data: pd.DataFrame, values: np.ndarray,
         var_name="Variable", value_name="Value",
     )
     long["Units"] = long["Variable"].apply(_get_unit)
-    return long[["Model", "Scenario", "Region", "Scenario_Category",
-                 "Year", "Variable", "Value", "Units"]]
+    return long[["Model", "Scenario", "Region", "Year", "Variable", "Value", "Units"]]
 
 
 # ---------------------------------------------------------------------------
@@ -261,20 +262,22 @@ def run(model: str, run_id: str, out_dir: str = "adapted-data",
         model, data_path=data_path, labels_path=labels_path
     )
     pred_long = _build_canonical_long(pred_td, pred_vals, pred_targets)
+    pred_iamc = long_to_iamc(pred_long)
     pred_path = out_path / f"{run_id}_predictions.csv"
-    pred_long.to_csv(pred_path, index=False)
+    pred_iamc.to_csv(pred_path, index=False)
     print(f"\n  Saved: {pred_path}")
 
     # Ground truth
     print(f"\nLoading Li ground truth data from: {li_path or _LI_ROOT}")
     gt_td, gt_vals, gt_targets = _load_ground_truth(li_path=li_path)
     gt_long = _build_canonical_long(gt_td, gt_vals, gt_targets)
+    gt_iamc = long_to_iamc(gt_long)
     gt_path = out_path / f"{run_id}_ground_truth.csv"
-    gt_long.to_csv(gt_path, index=False)
+    gt_iamc.to_csv(gt_path, index=False)
     print(f"  Saved: {gt_path}")
 
-    print(f"\n  Predictions : {len(pred_long):,} rows, {pred_long['Variable'].nunique()} variables")
-    print(f"  Ground truth: {len(gt_long):,} rows, {gt_long['Variable'].nunique()} variables")
+    print(f"\n  Predictions : {pred_iamc['Variable'].nunique()} variables, {len(pred_iamc)} scenario-region rows")
+    print(f"  Ground truth: {gt_iamc['Variable'].nunique()} variables, {len(gt_iamc)} scenario-region rows")
     print(f"  Units       : {sorted(pred_long['Units'].unique())}")
 
     return {

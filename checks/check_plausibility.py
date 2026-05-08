@@ -30,7 +30,7 @@ def compute_growth_rates(long: pd.DataFrame) -> pd.DataFrame:
 
     Uses sort + shift for vectorised computation.
     Returns DataFrame with columns:
-        Model, Scenario, Region, Scenario_Category, Variable, Year_From, Year_To, Growth_Rate
+        Model, Scenario, Region, Variable, Year_From, Year_To, Growth_Rate
     """
     group_cols = IDX + ["Variable"]
     df = long.sort_values(group_cols + ["Year"]).copy()
@@ -136,7 +136,6 @@ def run(
     predictions: pd.DataFrame,
     ground_truth: Optional[pd.DataFrame] = None,
     percentile: float = 1.0,
-    by_category: bool = False,
     out_dir: str = "results",
     run_id: str = "run",
     **kwargs
@@ -148,7 +147,6 @@ def run(
         predictions: Path to predictions CSV
         ground_truth: Path to ground truth CSV (optional)
         percentile: Percentile for bounds (default 1.0)
-        by_category: Compute bounds separately by category (default False)
         out_dir: Output directory (default results)
         run_id: Run identifier (default run)
 
@@ -194,21 +192,14 @@ def run(
     results = flag_violations(pred_growth, bounds)
 
     # Generate summary
-    summary_data = []
-    for cat in results["Scenario_Category"].unique():
-        cat_data = results[results["Scenario_Category"] == cat]
-        pass_count = (cat_data["Status"] == "PASS").sum()
-        fail_count = (cat_data["Status"] == "FAIL").sum()
-        total = pass_count + fail_count
-
-        summary_data.append({
-            "Scenario_Category": cat,
-            "Pass_Count": pass_count,
-            "Fail_Count": fail_count,
-            "Pass_Rate": pass_count / total if total > 0 else 1.0,
-        })
-
-    summary = pd.DataFrame(summary_data) if summary_data else pd.DataFrame()
+    pass_count = (results["Status"] == "PASS").sum()
+    fail_count = (results["Status"] == "FAIL").sum()
+    total = pass_count + fail_count
+    summary = pd.DataFrame([{
+        "Pass_Count": pass_count,
+        "Fail_Count": fail_count,
+        "Pass_Rate": pass_count / total if total > 0 else 1.0,
+    }])
 
     # Determine pass
     passed = (results["Status"] == "PASS").all()
@@ -220,20 +211,14 @@ def run(
     # Also check ground truth if provided
     if ground_truth is not None and not gt_growth.empty:
         gt_results = flag_violations(gt_growth, bounds)
-        gt_summary_data = []
-        for cat in gt_results["Scenario_Category"].unique():
-            cat_data = gt_results[gt_results["Scenario_Category"] == cat]
-            pass_count = (cat_data["Status"] == "PASS").sum()
-            fail_count = (cat_data["Status"] == "FAIL").sum()
-            total = pass_count + fail_count
-            gt_summary_data.append({
-                "Scenario_Category": cat,
-                "Pass_Count": pass_count,
-                "Fail_Count": fail_count,
-                "Pass_Rate": pass_count / total if total > 0 else 1.0,
-            })
-
-        gt_summary = pd.DataFrame(gt_summary_data) if gt_summary_data else pd.DataFrame()
+        gt_pass = (gt_results["Status"] == "PASS").sum()
+        gt_fail = (gt_results["Status"] == "FAIL").sum()
+        gt_total = gt_pass + gt_fail
+        gt_summary = pd.DataFrame([{
+            "Pass_Count": gt_pass,
+            "Fail_Count": gt_fail,
+            "Pass_Rate": gt_pass / gt_total if gt_total > 0 else 1.0,
+        }])
         gt_out_path = make_out_dir(out_dir, run_id, "check_plausibility_ground_truth")
         save_check_outputs(gt_out_path, gt_results, gt_summary)
 
@@ -256,7 +241,6 @@ def main():
     parser.add_argument("--run_id", required=True, help="Run identifier")
     parser.add_argument("--out_dir", default="results", help="Output directory")
     parser.add_argument("--percentile", type=float, default=1.0, help="Percentile for bounds")
-    parser.add_argument("--by_category", action="store_true", help="Compute bounds by category")
 
     args = parser.parse_args()
 
@@ -267,7 +251,6 @@ def main():
         predictions=pred,
         ground_truth=gt,
         percentile=args.percentile,
-        by_category=args.by_category,
         out_dir=args.out_dir,
         run_id=args.run_id,
     )

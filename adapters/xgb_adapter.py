@@ -25,6 +25,9 @@ import argparse
 import pandas as pd
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "checks"))
+from utils import long_to_iamc
+
 
 def build_canonical_long(test_data, values_array, targets, units_map):
     """
@@ -33,7 +36,7 @@ def build_canonical_long(test_data, values_array, targets, units_map):
     Parameters
     ----------
     test_data     : DataFrame with index columns including Model, Scenario,
-                    Region, Scenario_Category, Year
+                    Region, Year
     values_array  : numpy array of shape (n_rows, n_targets) — inverse-scaled
     targets       : list of variable names aligned to values_array columns
     units_map     : dict mapping variable name -> unit string
@@ -41,9 +44,9 @@ def build_canonical_long(test_data, values_array, targets, units_map):
     Returns
     -------
     Long-format DataFrame with columns:
-        Model, Scenario, Region, Scenario_Category, Year, Variable, Value, Units
+        Model, Scenario, Region, Year, Variable, Value, Units
     """
-    index_cols = ["Model", "Scenario", "Region", "Scenario_Category", "Year"]
+    index_cols = ["Model", "Scenario", "Region", "Year"]
     idx  = test_data[index_cols].reset_index(drop=True)
     wide = pd.DataFrame(values_array, columns=targets)
     combined = pd.concat([idx, wide], axis=1)
@@ -55,8 +58,7 @@ def build_canonical_long(test_data, values_array, targets, units_map):
         value_name="Value",
     )
     long["Units"] = long["Variable"].map(units_map).fillna("unknown")
-    return long[["Model", "Scenario", "Region", "Scenario_Category",
-                 "Year", "Variable", "Value", "Units"]]
+    return long[["Model", "Scenario", "Region", "Year", "Variable", "Value", "Units"]]
 
 
 def run(run_id, out_dir="adapted-data", ml_iam_root=None):
@@ -109,25 +111,28 @@ def run(run_id, out_dir="adapted-data", ml_iam_root=None):
     print(f"  Targets : {len(targets)} variables")
     print(f"  Rows    : {len(test_data):,}")
 
-    # Build canonical DataFrames
+    # Build canonical DataFrames and convert to IAMC wide format
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    predictions_df  = build_canonical_long(test_data, preds,  targets, UNITS_BY_OUTPUT)
-    ground_truth_df = build_canonical_long(test_data, y_test, targets, UNITS_BY_OUTPUT)
+    predictions_long = build_canonical_long(test_data, preds,  targets, UNITS_BY_OUTPUT)
+    ground_truth_long = build_canonical_long(test_data, y_test, targets, UNITS_BY_OUTPUT)
+
+    predictions_iamc  = long_to_iamc(predictions_long)
+    ground_truth_iamc = long_to_iamc(ground_truth_long)
 
     pred_path = out_path / f"{run_id}_predictions.csv"
     gt_path   = out_path / f"{run_id}_ground_truth.csv"
 
-    predictions_df.to_csv(pred_path,  index=False)
-    ground_truth_df.to_csv(gt_path,   index=False)
+    predictions_iamc.to_csv(pred_path,  index=False)
+    ground_truth_iamc.to_csv(gt_path,   index=False)
     print(f"\n  Saved: {pred_path}")
     print(f"  Saved: {gt_path}")
 
     # Print summary
     print("\nAdapter Summary:")
-    print(f"  Predictions: {len(predictions_df)} rows, {predictions_df['Variable'].nunique()} variables")
-    print(f"  Units used: {set(predictions_df['Units'].unique())}")
+    print(f"  Predictions: {predictions_iamc['Variable'].nunique()} variables, {len(predictions_iamc)} scenario-region rows")
+    print(f"  Units used: {set(predictions_long['Units'].unique())}")
 
     print(f"\n  Variables : {', '.join(targets)}")
     print(f"  Units     : {dict(zip(targets, [UNITS_BY_OUTPUT.get(t, 'unknown') for t in targets]))}")
@@ -136,7 +141,7 @@ def run(run_id, out_dir="adapted-data", ml_iam_root=None):
         "run_id":             run_id,
         "predictions_path":   str(pred_path),
         "ground_truth_path":  str(gt_path),
-        "n_rows":             len(predictions_df),
+        "n_rows":             len(predictions_iamc),
         "n_variables":        len(targets),
     }
 

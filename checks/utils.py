@@ -1,13 +1,20 @@
 """
 Shared utilities for em-iam-val check scripts.
 
-Canonical format
-----------------
-All data in this framework is long-format with columns:
-    Model, Scenario, Region, Scenario_Category, Year, Variable, Value, Units
+File format (IAMC wide)
+-----------------------
+Input and output files follow the IAMC timeseries format:
+    Model, Scenario, Region, Variable, Unit, <year>, <year>, ...
 
-The Units column is populated by adapters and used by normalize_to_canonical()
-to convert values to canonical units before any check runs.
+where year columns are integers (e.g. 2010, 2020, ..., 2100).
+load_csv() accepts this format directly — no adapter or pre-conversion needed.
+
+Internal format (long)
+----------------------
+All internal processing uses a long format with columns:
+    Model, Scenario, Region, Year, Variable, Value, Units
+
+load_csv() converts IAMC wide to long automatically on load.
 
 Canonical units
 ---------------
@@ -25,8 +32,11 @@ from typing import Optional, Tuple
 import sys
 
 
-CANONICAL_COLUMNS = ["Model", "Scenario", "Region", "Scenario_Category", "Year", "Variable", "Value", "Units"]
-IDX = ["Model", "Scenario", "Region", "Scenario_Category"]
+CANONICAL_COLUMNS = ["Model", "Scenario", "Region", "Year", "Variable", "Value", "Units"]
+IDX = ["Model", "Scenario", "Region"]
+
+# IAMC wide-format metadata columns (everything else in an IAMC file is a year column)
+IAMC_META = ["Model", "Scenario", "Region", "Variable", "Unit"]
 
 _CONVERSIONS = {
     ("PJ", "EJ"): 1e-3, ("EJ", "PJ"): 1e3,
@@ -85,9 +95,61 @@ class _Tee:
         self._file.close()
 
 
+def _is_iamc(df: pd.DataFrame) -> bool:
+    """Return True if df looks like IAMC wide format."""
+    return all(c in df.columns for c in IAMC_META)
+
+
+def _iamc_to_long(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert an IAMC wide-format DataFrame to internal long format.
+
+    IAMC columns: Model, Scenario, Region, Variable, Unit, <year>, <year>, ...
+    Output columns: Model, Scenario, Region, Year, Variable, Value, Units
+    """
+    year_cols = [c for c in df.columns if c not in IAMC_META]
+    if not year_cols:
+        raise ValueError("IAMC format detected but no year columns found.")
+    try:
+        [int(c) for c in year_cols]
+    except (ValueError, TypeError):
+        raise ValueError(
+            f"IAMC format detected but non-integer columns found alongside metadata: {year_cols}"
+        )
+    long = df.melt(
+        id_vars=IAMC_META,
+        value_vars=year_cols,
+        var_name="Year",
+        value_name="Value",
+    )
+    long["Year"] = long["Year"].astype(int)
+    long = long.rename(columns={"Unit": "Units"})
+    return long[CANONICAL_COLUMNS]
+
+
+def long_to_iamc(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert internal long-format DataFrame to IAMC wide format.
+
+    Input columns:  Model, Scenario, Region, Year, Variable, Value, Units
+    Output columns: Model, Scenario, Region, Variable, Unit, <year>, <year>, ...
+    """
+    unit_map = df.groupby("Variable")["Units"].first()
+    wide = df.pivot_table(
+        index=["Model", "Scenario", "Region", "Variable"],
+        columns="Year",
+        values="Value",
+        aggfunc="first",
+    ).reset_index()
+    wide.columns.name = None
+    wide.insert(4, "Unit", wide["Variable"].map(unit_map))
+    year_cols = sorted([c for c in wide.columns if c not in IAMC_META])
+    return wide[IAMC_META + year_cols]
+
+
 def validate_format(df: pd.DataFrame) -> None:
     """
-    Validate that df has all canonical columns.
+    Validate that df has all internal long-format canonical columns.
 
     Raises ValueError if any columns are missing.
     """
@@ -101,8 +163,15 @@ def validate_format(df: pd.DataFrame) -> None:
 
 
 def load_csv(path: str) -> pd.DataFrame:
-    """Load CSV and validate canonical format."""
+    """
+    Load a CSV file in IAMC wide format or internal long format.
+
+    IAMC wide format (Model, Scenario, Region, Variable, Unit, <years>...)
+    is detected automatically and converted to internal long format on load.
+    """
     df = pd.read_csv(path)
+    if _is_iamc(df):
+        df = _iamc_to_long(df)
     validate_format(df)
     return df
 

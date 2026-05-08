@@ -119,7 +119,7 @@ def _example_sum_failure(te: pd.DataFrame, sc: pd.DataFrame, label: str) -> str:
         return f"_Could not locate timestep rows for example scenario in {label}._"
 
     # Identify child variable columns (anything that's not a metadata column)
-    meta_cols = {"Model","Scenario","Region","Scenario_Category","Year","Parent",
+    meta_cols = {"Model","Scenario","Region","Year","Parent",
                  "Parent_Value","Children_Sum","Residual","Tolerance","Status",
                  "abs_error","passed_timestep","parent_variable","total",
                  "sum_components","zero_total"}
@@ -162,7 +162,6 @@ def _example_plausibility_failure(viol: pd.DataFrame, label: str) -> str:
         "Variable":    row["Variable"],
         "Scenario":    row.get("Scenario", "—"),
         "Region":      row.get("Region", "—"),
-        "Category":    row.get("Scenario_Category", "—"),
         "Year (from)": int(row["Year_From"]) if "Year_From" in row.index else "—",
         "Year (to)":   int(row["Year"]),
         "Growth rate": f"{row['Growth_Rate']:+.4f}",
@@ -188,7 +187,6 @@ def _example_bounds_failure(viol: pd.DataFrame, label: str) -> str:
         "Variable":       row["Variable"],
         "Scenario":       row.get("Scenario", "—"),
         "Region":         row.get("Region", "—"),
-        "Category":       row.get("Scenario_Category", "—"),
         "Year":           int(row["Year"]),
         "Value":          round(float(row["Value"]), 4),
         "Units":          row.get("Units", "—"),
@@ -223,7 +221,7 @@ def _adapt_sum_results(df: pd.DataFrame, threshold: float = 0.012) -> tuple:
     df["total"] = df["Parent_Value"]
     df["sum_components"] = df["Children_Sum"]
     df["zero_total"] = df["Parent_Value"].abs() < 1.0
-    IDX = ["Model", "Scenario", "Region", "Scenario_Category"]
+    IDX = ["Model", "Scenario", "Region"]
     sc = (
         df.groupby(IDX + ["parent_variable"])
         .agg(
@@ -284,7 +282,7 @@ def _adapt_regional(df: pd.DataFrame):
         df["Residual"] / df["World_Value"].abs(),
     )
     df["grouping"] = df["Grouping"]
-    IDX = ["Model", "Scenario", "Region", "Scenario_Category"]
+    IDX = ["Model", "Scenario", "Region"]
     sc = (
         df.groupby(IDX + ["grouping", "Variable"])
         .agg(
@@ -305,7 +303,7 @@ def _adapt_bounds(df: pd.DataFrame):
     df["violation"]   = df["Status"] == "FAIL"
     df["below_lower"] = df["Violation_Type"].str.contains("lower", case=False, na=False)
     df["above_upper"] = df["Violation_Type"].str.contains("upper", case=False, na=False)
-    IDX = ["Model", "Scenario", "Region", "Scenario_Category", "Variable"]
+    IDX = ["Model", "Scenario", "Region", "Variable"]
     sc = (
         df.groupby(IDX)
         .agg(
@@ -662,18 +660,6 @@ def section_plausibility(run_dir: Path, fig_dir: Path) -> tuple:
     rel = save_fig(fig, fig_dir, "plausibility_violations_by_variable")
     figures.append(rel)
     blocks.append(f"### Violation Rate by Variable\n\n![Plausibility violations by variable]({rel})")
-
-    # Violation rate by scenario category
-    if "Scenario_Category" in viol.columns:
-        cat = (
-            viol.groupby("Scenario_Category")
-            .agg(total=("violation", "count"), violations=("violation", "sum"))
-            .reset_index()
-        )
-        cat["rate_%"] = (100 * cat["violations"] / cat["total"]).round(2)
-        cat = cat.sort_values("rate_%", ascending=False)
-        cat.columns = ["Category", "Timesteps", "Violations", "Violation rate (%)"]
-        blocks.append("### Violation Rate by Scenario Category\n\n" + md_table(cat))
 
     # Example violations
     blocks.append(

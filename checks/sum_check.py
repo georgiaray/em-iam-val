@@ -128,7 +128,6 @@ def scenario_summary(
             "Model": scenario_key[0],
             "Scenario": scenario_key[1],
             "Region": scenario_key[2],
-            "Scenario_Category": scenario_key[3],
             "Pass_Count": pass_count,
             "Fail_Count": fail_count,
             "Pass_Rate": pass_count / total if total > 0 else 1.0,

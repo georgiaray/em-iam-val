@@ -224,8 +224,6 @@ def main():
                         help="Absolute tolerance floor (default: 1.0)")
     parser.add_argument("--world_region", default="World",
                         help="World region name (default: World)")
-    parser.add_argument("--by_category", action="store_true",
-                        help="Compute bounds by category in plausibility check")
     parser.add_argument("--pass_mode", default="mean", choices=["mean", "all"],
                         help="Pass criterion for sum check (default: mean)")
     parser.add_argument("--grouping", choices=["R5", "R6", "R10"],
@@ -255,7 +253,6 @@ def main():
         "threshold": args.threshold,
         "abs_floor": args.abs_floor,
         "world_region": args.world_region,
-        "by_category": args.by_category,
         "pass_mode": args.pass_mode,
         "grouping": args.grouping,
     }

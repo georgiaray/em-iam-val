@@ -111,7 +111,7 @@ def run_bounds_check(pred_long: pd.DataFrame, bounds_table: pd.DataFrame) -> pd.
     """
     Run bounds check on predictions.
 
-    Returns DataFrame with columns: Model, Scenario, Region, Scenario_Category, Year,
+    Returns DataFrame with columns: Model, Scenario, Region, Year,
     Variable, Value, Units, Status, Violation_Type
     """
     results = pred_long.copy()
@@ -146,7 +146,7 @@ def run_bounds_check(pred_long: pd.DataFrame, bounds_table: pd.DataFrame) -> pd.
 
 
 def scenario_summary(checked: pd.DataFrame) -> pd.DataFrame:
-    """Summarize pass/fail by (Model, Scenario, Region, Scenario_Category)."""
+    """Summarize pass/fail by (Model, Scenario, Region)."""
     grp = checked.groupby(IDX)["Status"]
     summary = grp.value_counts().unstack(fill_value=0).reset_index()
     for col in ("PASS", "FAIL"):

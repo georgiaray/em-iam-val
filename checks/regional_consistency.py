@@ -51,7 +51,7 @@ def check_grouping(
         return pd.DataFrame()
 
     pivot = subset.pivot_table(
-        index=["Model", "Scenario", "Scenario_Category", "Variable", "Year"],
+        index=["Model", "Scenario", "Variable", "Year"],
         columns="Region",
         values="Value",
         aggfunc="first",
@@ -85,7 +85,7 @@ def check_grouping(
     pivot["Grouping"]     = grouping_name
     pivot["Region"]       = "World"
 
-    return pivot[["Model", "Scenario", "Region", "Scenario_Category", "Variable", "Year",
+    return pivot[["Model", "Scenario", "Region", "Variable", "Year",
                   "Grouping", "world_value", "regional_sum", "residual", "tolerance", "Status"]].rename(
         columns={"world_value": "World_Value", "regional_sum": "Regional_Sum",
                  "residual": "Residual", "tolerance": "Tolerance"}
