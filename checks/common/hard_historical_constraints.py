@@ -17,9 +17,9 @@ Belongs to the 'Historical and domain knowledge comparison' validation family.
 
 Usage (standalone):
     python checks/hard_historical_constraints.py \\
-        --predictions adapted-data/xgb_04_predictions.csv \\
-        --ground_truth adapted-data/xgb_04_ground_truth.csv \\
-        --run_id xgb_04
+        --predictions adapted-data/shin_01_predictions.csv \\
+        --ground_truth adapted-data/shin_01_ground_truth.csv \\
+        --run_id shin_01
 """
 
 import sys

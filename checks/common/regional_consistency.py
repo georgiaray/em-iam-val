@@ -4,8 +4,8 @@ Regional consistency check.
 Checks that predicted World values equal the sum of subregion predictions.
 
 Usage (standalone):
-    python checks/regional_consistency.py --predictions adapted-data/xgb_04_predictions.csv \\
-                                           --run_id xgb_04
+    python checks/regional_consistency.py --predictions adapted-data/shin_01_predictions.csv \\
+                                           --run_id shin_01
 """
 
 from typing import Optional

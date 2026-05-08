@@ -5,7 +5,7 @@ Reads results from results/<run_id>/ and generates a Markdown report
 with summary tables and figures, matching the original report style.
 
 Usage:
-    python make_val_report.py --run_id xgb_04
+    python make_val_report.py --run_id shin_01
     python make_val_report.py --run_id li_vae_01 --title "Li VAE validation"
 """
 

@@ -6,9 +6,9 @@ saves results, optionally generates a report.
 
 Usage:
     python validate.py \\
-        --predictions adapted-data/xgb_04_predictions.csv \\
-        --ground_truth adapted-data/xgb_04_ground_truth.csv \\
-        --run_id xgb_04
+        --predictions adapted-data/shin_01_predictions.csv \\
+        --ground_truth adapted-data/shin_01_ground_truth.csv \\
+        --run_id shin_01
 
     # Run only specific checks:
     python validate.py ... --only bounds_check hard_historical_constraints

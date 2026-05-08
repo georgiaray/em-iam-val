@@ -10,13 +10,13 @@ Belongs to the 'Variance and covariance metrics' validation family.
 
 Usage (standalone):
     python checks/inter_variable_correlation.py \\
-        --predictions adapted-data/xgb_04_predictions.csv \\
-        --ground_truth adapted-data/xgb_04_ground_truth.csv \\
-        --run_id xgb_04
+        --predictions adapted-data/shin_01_predictions.csv \\
+        --ground_truth adapted-data/shin_01_ground_truth.csv \\
+        --run_id shin_01
 
     python checks/inter_variable_correlation.py \\
-        --predictions adapted-data/xgb_04_predictions.csv \\
-        --run_id xgb_04 --years 2030 2050 2100
+        --predictions adapted-data/shin_01_predictions.csv \\
+        --run_id shin_01 --years 2030 2050 2100
 """
 
 import argparse
@@ -323,7 +323,7 @@ def main():
     parser.add_argument("--ground_truth", default=None,
                         help="Path to canonical ground truth CSV (optional)")
     parser.add_argument("--run_id",       required=True,
-                        help="Run identifier, e.g. xgb_04")
+                        help="Run identifier, e.g. shin_01")
     parser.add_argument("--out_dir",      default="results",
                         help="Root results directory (default: results/)")
     parser.add_argument("--years",        nargs="+", type=int,

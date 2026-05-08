@@ -2,7 +2,12 @@
 
 A modular, study-agnostic validation framework for assessing the physical plausibility and internal consistency of emulated Integrated Assessment Model (IAM) scenarios.
 
-This framework establishes validation standards for the emerging field of IAM emulation — the use of machine learning to reproduce or generate IAM scenario outputs. It is designed to work with any emulation approach. Two published emulation studies are included as worked examples demonstrating the framework's application.
+This framework establishes validation standards for the emerging field of IAM emulation — the use of machine learning to reproduce or generate IAM scenario outputs. It is designed to work with any emulation approach.
+
+Two published emulation studies are included as worked examples demonstrating the framework's application:
+
+- **[ML-IAM v1.0](https://egusphere.copernicus.org/preprints/2026/egusphere-2025-5305/)** (Shin et al., 2026) — XGBoost-based reconstruction emulator; a supervised regression approach that predicts specific IAM output scenarios given input conditions
+- **[Deep-IAM](https://zenodo.org/)** (Li et al.) — generative deep learning emulator (VAE / cGAN / RCGAN) that produces a distribution of plausible IAM scenarios conditioned on policy labels
 
 ---
 
@@ -61,8 +66,8 @@ from em_iam_val.checks.reconstruction import error_metrics
 ```
 em-iam-val/
 ├── adapters/
-│   ├── xgb_adapter.py          # Example: XGBoost reconstruction emulator → IAMC CSV
-│   └── li_adapter.py           # Example: generative deep learning emulator → IAMC CSV
+│   ├── shin_adapter.py         # Example: Shin et al. reconstruction emulator → IAMC CSV
+│   └── li_adapter.py           # Example: Li et al. generative emulator → IAMC CSV
 ├── checks/
 │   ├── utils.py                # IAMC loading, unit normalisation, shared helpers
 │   ├── common/                 # Checks applicable to all emulation methods

@@ -1,8 +1,8 @@
-# Validation Report: xgb_04
+# Validation Report: shin_01
 
-**Run ID:** `xgb_04`
-**Generated:** 2026-05-05 20:11
-**Results:** `results/xgb_04/`
+**Run ID:** `shin_01`
+**Generated:** 2026-05-08 11:21
+**Results:** `results/shin_01/`
 
 ---
 
@@ -19,7 +19,7 @@
 
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
-| Pass rate (timesteps) | 87.4% | 83.1% |
+| Pass rate (timesteps) | 53.0% | 51.5% |
 
 **3. Regional Consistency**
 
@@ -29,7 +29,7 @@ _No complete regional groupings in this dataset._
 
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
-| Pass rate (timesteps) | 96.3% | 98.4% |
+| Pass rate (timesteps) | 97.6% | 99.0% |
 
 **5. Hard Historical Constraints** _(PASS = within IP range, WARN = within outer tolerance)_
 
@@ -150,29 +150,15 @@ _The median failing scenario (by mean error) is shown below._
 _For each predicted trajectory, checks that period-on-period growth rates
 fall within empirically-derived bounds from the ground truth data._
 
-**Total timesteps evaluated:** 419,995  
-**Violations:** 52,953 (12.61%)  
+**Total timesteps evaluated:** 420,508  
+**Violations:** 197,815 (47.04%)  
 
-**Ground truth — violation rate:** 16.89%  
-_(-4.29pp difference: predictions vs ground truth)_
+**Ground truth — violation rate:** 48.50%  
+_(-1.46pp difference: predictions vs ground truth)_
 
 ### Violation Rate by Variable
 
 ![Plausibility violations by variable](figures/plausibility_violations_by_variable.png)
-
-### Violation Rate by Scenario Category
-
-| Category | Timesteps | Violations | Violation rate (%) |
-| --- | --- | --- | --- |
-| C2 | 48716 | 6770 | 13.9000 |
-| C1 | 29697 | 4122 | 13.8800 |
-| C3 | 123215 | 16981 | 13.7800 |
-| C6 | 42883 | 5659 | 13.2000 |
-| C4 | 60743 | 7832 | 12.8900 |
-| C5 | 66880 | 7305 | 10.9200 |
-| C7 | 34694 | 3524 | 10.1600 |
-| C8 | 3097 | 280 | 9.0400 |
-| no-climate-assessment | 10070 | 480 | 4.7700 |
 
 ### Example Violation
 
@@ -182,17 +168,17 @@ _The most extreme growth rate violation is shown below._
 
 **Most extreme growth rate violation**
 
-| Variable | Scenario | Region | Category | Year (from) | Year (to) | Growth rate |
-| --- | --- | --- | --- | --- | --- | --- |
-| Emissions\|CO2 | EN_INDCi2030_900f_NDCp | World | C3 | 2070 | 2080 | -2677.9061 |
+| Variable | Scenario | Region | Year (from) | Year (to) | Growth rate |
+| --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Solar | EN_NPi2020_600_DR1p | R10MIDDLE_EAST | 2020 | 2025 | +478.8620 |
 
 #### Example violation — ground truth
 
 **Most extreme growth rate violation**
 
-| Variable | Scenario | Region | Category | Year (from) | Year (to) | Growth rate |
-| --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Solar | EN_NPi2020_1000_COV | R10INDIA+ | C3 | 2020 | 2030 | +1719.5934 |
+| Variable | Scenario | Region | Year (from) | Year (to) | Growth rate |
+| --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Wind | EN_INDCi2030_700 | R10MIDDLE_EAST | 2030 | 2035 | +327.1855 |
 
 ---
 
@@ -211,8 +197,8 @@ _No complete regional groupings found in this dataset. The check requires all su
 _Checks predictions against hard physical lower bounds (energy variables ≥ 0)
 and empirical per-variable bounds derived from ground truth._
 
-**Timesteps checked:** 457,691  
-**Violations:** 17,041 (3.723%)  
+**Timesteps checked:** 716,224  
+**Violations:** 17,041 (2.379%)  
 **Fully clean scenario-regions:** 32,149 / 37,696
 
 ### Violations by Variable
@@ -223,10 +209,10 @@ and empirical per-variable bounds derived from ground truth._
 
 | Source | Timesteps | Violations | Violation rate |
 | --- | --- | --- | --- |
-| Predictions | 457,691 | 17,041 | 3.723% |
-| Ground truth | 457,691 | 7,257 | 1.586% |
+| Predictions | 716,224 | 17,041 | 2.379% |
+| Ground truth | 716,224 | 7,257 | 1.013% |
 
-_Predictions show +2.138 pp more violations than ground truth._
+_Predictions show +1.366 pp more violations than ground truth._
 
 ### Violation Rate by Variable — Predictions vs Ground Truth
 
@@ -240,17 +226,17 @@ _The most extreme bounds violation is shown below._
 
 **Most extreme bounds violation**
 
-| Variable | Scenario | Region | Category | Year | Value | Units | Violation type |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity | CEMICS-2.0-CDR8 | World | C1 | 2100 | 831072.3969 | EJ/yr | Above empirical upper bound (373710.01) |
+| Variable | Scenario | Region | Year | Value | Units | Violation type |
+| --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity | CEMICS-2.0-CDR8 | World | 2100 | 831072.3969 | EJ/yr | Above empirical upper bound (373710.01) |
 
 #### Example violation — ground truth
 
 **Most extreme bounds violation**
 
-| Variable | Scenario | Region | Category | Year | Value | Units | Violation type |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity | EN_NPi2020_600f | World | C2 | 2100 | 829450.1 | EJ/yr | Above empirical upper bound (373710.01) |
+| Variable | Scenario | Region | Year | Value | Units | Violation type |
+| --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity | EN_NPi2020_600f | World | 2100 | 829450.1 | EJ/yr | Above empirical upper bound (373710.01) |
 
 ---
 

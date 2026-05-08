@@ -5,9 +5,9 @@ Computes period-on-period growth rates and checks they fall within
 empirically-derived bounds from the ground truth data.
 
 Usage (standalone):
-    python checks/check_plausibility.py --predictions adapted-data/xgb_04_predictions.csv \\
-                                         --ground_truth adapted-data/xgb_04_ground_truth.csv \\
-                                         --run_id xgb_04
+    python checks/check_plausibility.py --predictions adapted-data/shin_01_predictions.csv \\
+                                         --ground_truth adapted-data/shin_01_ground_truth.csv \\
+                                         --run_id shin_01
 """
 
 from typing import Optional

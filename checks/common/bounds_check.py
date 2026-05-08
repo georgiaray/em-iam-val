@@ -5,9 +5,9 @@ Checks predictions against hard physical lower bounds and empirical bounds
 derived from ground truth data.
 
 Usage (standalone):
-    python checks/bounds_check.py --predictions adapted-data/xgb_04_predictions.csv \\
-                                   --ground_truth adapted-data/xgb_04_ground_truth.csv \\
-                                   --run_id xgb_04
+    python checks/bounds_check.py --predictions adapted-data/shin_01_predictions.csv \\
+                                   --ground_truth adapted-data/shin_01_ground_truth.csv \\
+                                   --run_id shin_01
 """
 
 import sys

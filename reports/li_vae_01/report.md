@@ -1,7 +1,7 @@
 # Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-05 20:11
+**Generated:** 2026-05-08 11:23
 **Results:** `results/li_vae_01/`
 
 ---
@@ -29,7 +29,7 @@ _No complete regional groupings in this dataset._
 
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
-| Pass rate (timesteps) | 76.0% | 98.6% |
+| Pass rate (timesteps) | 76.0% | 98.5% |
 
 **5. Hard Historical Constraints** _(PASS = within IP range, WARN = within outer tolerance)_
 
@@ -103,36 +103,36 @@ _The median failing scenario (by mean error) is shown below._
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 1495.91%  (median failing scenario)
 
-| Year | Nuclear | Hydro | Oil | Coal | Gas | Wind | Solar | Biomass | Geothermal | Sum of children | Parent value | Error (%) | Status |
+| Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children | Parent value | Error (%) | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2020 | 9.679 | 1.134 | 5.007 | 14.262 | 0.356 | 33.192 | 30.298 | 0.925 | 98.92 | 193.773 | 2.437 | 7852.31 | FAIL |
-| 2030 | 17.451 | 0.658 | 29.438 | 21.842 | 2.067 | 43.212 | 8.101 | 2.71 | 139.837 | 265.316 | 14.544 | 1724.26 | FAIL |
-| 2040 | 26.204 | 0.23 | 61.463 | 24.43 | 5.013 | 54.595 | 6.767 | 2.607 | 218.944 | 400.253 | 29.574 | 1253.41 | FAIL |
-| 2050 | 36.92 | 0.015 | 95.815 | 26.135 | 6.368 | 47.566 | 2.212 | 5.053 | 283.121 | 503.205 | 61.003 | 724.88 | FAIL |
-| 2060 | 48.977 | 0.002 | 147.844 | 27.015 | 6.183 | 23.297 | 0.482 | 8.702 | 360.243 | 622.745 | 93.905 | 563.16 | FAIL |
-| 2070 | 61.345 | 0.001 | 198.231 | 27.382 | 6.328 | 6.534 | 0.07 | 7.873 | 449.639 | 757.403 | 138.044 | 448.67 | FAIL |
-| 2080 | 78.756 | 0.0 | 224.607 | 27.89 | 6.305 | 2.307 | 0.012 | 7.015 | 537.763 | 884.654 | 186.446 | 374.48 | FAIL |
-| 2090 | 82.924 | 0.0 | 238.591 | 28.42 | 6.357 | 1.418 | 0.018 | 7.167 | 617.081 | 981.976 | 249.8 | 293.1 | FAIL |
-| 2100 | 78.719 | 0.0 | 247.571 | 30.01 | 6.44 | 0.49 | 0.019 | 6.954 | 695.818 | 1066.019 | 324.121 | 228.9 | FAIL |
+| 2020 | 0.925 | 14.262 | 0.356 | 98.92 | 1.134 | 9.679 | 5.007 | 30.298 | 33.192 | 193.773 | 2.437 | 7852.31 | FAIL |
+| 2030 | 2.71 | 21.842 | 2.067 | 139.837 | 0.658 | 17.451 | 29.438 | 8.101 | 43.212 | 265.316 | 14.544 | 1724.26 | FAIL |
+| 2040 | 2.607 | 24.43 | 5.013 | 218.944 | 0.23 | 26.204 | 61.463 | 6.767 | 54.595 | 400.253 | 29.574 | 1253.41 | FAIL |
+| 2050 | 5.053 | 26.135 | 6.368 | 283.121 | 0.015 | 36.92 | 95.815 | 2.212 | 47.566 | 503.205 | 61.003 | 724.88 | FAIL |
+| 2060 | 8.702 | 27.015 | 6.183 | 360.243 | 0.002 | 48.977 | 147.844 | 0.482 | 23.297 | 622.745 | 93.905 | 563.16 | FAIL |
+| 2070 | 7.873 | 27.382 | 6.328 | 449.639 | 0.001 | 61.345 | 198.231 | 0.07 | 6.534 | 757.403 | 138.044 | 448.67 | FAIL |
+| 2080 | 7.015 | 27.89 | 6.305 | 537.763 | 0.0 | 78.756 | 224.607 | 0.012 | 2.307 | 884.654 | 186.446 | 374.48 | FAIL |
+| 2090 | 7.167 | 28.42 | 6.357 | 617.081 | 0.0 | 82.924 | 238.591 | 0.018 | 1.418 | 981.976 | 249.8 | 293.1 | FAIL |
+| 2100 | 6.954 | 30.01 | 6.44 | 695.818 | 0.0 | 78.719 | 247.571 | 0.019 | 0.49 | 1066.019 | 324.121 | 228.9 | FAIL |
 
 #### Example failure — ground truth
 
-**Scenario:** REMIND-MAgPIE 2.1-4.2 | NGFS2_Below 2°C - IPD-median | World  
+**Scenario:** REMIND-MAgPIE 2.1-4.2 | EN_NPi2020_1000_COV | World  
 **Parent variable:** Secondary Energy|Electricity  
 **Mean error:** 2.13%  (median failing scenario)
 
-| Year | Nuclear | Hydro | Oil | Coal | Gas | Wind | Solar | Biomass | Geothermal | Sum of children | Parent value | Error (%) | Status |
+| Year | Biomass | Coal | Gas | Geothermal | Hydro | Nuclear | Oil | Solar | Wind | Sum of children | Parent value | Error (%) | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2010 | 9.51 | 12.717 | 3.658 | 29.522 | 18.511 | 2.005 | 0.327 | 1.2 | 0.343 | 77.793 | 77.793 | 0.0 | PASS |
-| 2020 | 8.044 | 19.184 | 2.228 | 37.779 | 24.263 | 5.303 | 3.126 | 2.063 | 0.876 | 102.864 | 102.874 | 0.01 | PASS |
-| 2030 | 7.211 | 22.32 | 0.68 | 13.361 | 28.327 | 21.993 | 27.704 | 2.779 | 1.318 | 125.693 | 126.486 | 0.63 | PASS |
-| 2040 | 7.178 | 24.384 | 0.12 | 0.072 | 17.524 | 53.388 | 52.804 | 2.713 | 1.341 | 159.524 | 162.408 | 1.78 | FAIL |
-| 2050 | 6.472 | 25.797 | 0.0 | 0.017 | 9.865 | 78.933 | 67.984 | 2.805 | 1.315 | 193.188 | 197.675 | 2.27 | FAIL |
-| 2060 | 5.009 | 26.872 | 0.0 | 0.006 | 7.234 | 95.627 | 79.456 | 3.577 | 1.27 | 219.051 | 224.688 | 2.51 | FAIL |
-| 2070 | 3.351 | 27.714 | 0.0 | 0.002 | 5.249 | 112.49 | 94.29 | 4.477 | 1.235 | 248.808 | 256.11 | 2.85 | FAIL |
-| 2080 | 1.717 | 28.408 | 0.0 | 0.002 | 5.27 | 124.537 | 111.042 | 5.164 | 1.234 | 277.374 | 286.64 | 3.23 | FAIL |
-| 2090 | 0.687 | 29.141 | 0.0 | 0.002 | 4.451 | 134.46 | 121.15 | 5.347 | 1.173 | 296.412 | 307.884 | 3.73 | FAIL |
-| 2100 | 0.19 | 29.63 | 0.0 | 0.002 | 3.119 | 146.649 | 134.235 | 5.349 | 1.228 | 320.401 | 334.831 | 4.31 | FAIL |
+| 2010 | 1.195 | 30.167 | 18.091 | 0.325 | 12.741 | 9.547 | 3.646 | 0.298 | 2.046 | 78.055 | 78.055 | 0.0 | PASS |
+| 2020 | 2.085 | 30.63 | 22.894 | 0.872 | 19.519 | 8.022 | 2.12 | 3.386 | 5.484 | 95.013 | 95.024 | 0.01 | PASS |
+| 2030 | 2.811 | 18.38 | 26.784 | 1.319 | 23.104 | 7.132 | 0.523 | 28.017 | 21.927 | 129.996 | 130.736 | 0.57 | PASS |
+| 2040 | 2.721 | 0.506 | 18.014 | 1.336 | 25.322 | 7.254 | 0.02 | 58.072 | 57.697 | 170.943 | 174.113 | 1.82 | FAIL |
+| 2050 | 2.836 | 0.019 | 9.687 | 1.312 | 26.881 | 6.952 | 0.0 | 85.272 | 97.497 | 230.456 | 236.125 | 2.4 | FAIL |
+| 2060 | 3.924 | 0.008 | 7.802 | 1.276 | 28.131 | 6.085 | 0.0 | 114.508 | 131.631 | 293.366 | 301.445 | 2.68 | FAIL |
+| 2070 | 5.423 | 0.013 | 8.919 | 1.252 | 29.082 | 5.281 | 0.0 | 147.842 | 159.81 | 357.622 | 368.555 | 2.97 | FAIL |
+| 2080 | 6.729 | 0.025 | 9.78 | 1.233 | 29.834 | 4.884 | 0.0 | 180.22 | 177.243 | 409.948 | 423.964 | 3.31 | FAIL |
+| 2090 | 7.568 | 0.032 | 9.855 | 1.183 | 30.648 | 5.882 | 0.0 | 205.703 | 192.284 | 453.154 | 470.327 | 3.65 | FAIL |
+| 2100 | 8.195 | 0.03 | 9.835 | 1.23 | 31.316 | 8.621 | 0.0 | 232.592 | 207.765 | 499.583 | 519.97 | 3.92 | FAIL |
 
 ---
 
@@ -151,14 +151,6 @@ _(+10.37pp difference: predictions vs ground truth)_
 
 ![Plausibility violations by variable](figures/plausibility_violations_by_variable.png)
 
-### Violation Rate by Scenario Category
-
-| Category | Timesteps | Violations | Violation rate (%) |
-| --- | --- | --- | --- |
-| C1234 | 1280000 | 301610 | 23.5600 |
-| C56 | 1280000 | 278908 | 21.7900 |
-| C78 | 1280000 | 260743 | 20.3700 |
-
 ### Example Violation
 
 _The most extreme growth rate violation is shown below._
@@ -167,17 +159,17 @@ _The most extreme growth rate violation is shown below._
 
 **Most extreme growth rate violation**
 
-| Variable | Scenario | Region | Category | Year (from) | Year (to) | Growth rate |
-| --- | --- | --- | --- | --- | --- | --- |
-| Emissions\|Kyoto Gases | gen_13214 | World | C56 | 2090 | 2100 | -2974.3899 |
+| Variable | Scenario | Region | Year (from) | Year (to) | Growth rate |
+| --- | --- | --- | --- | --- | --- |
+| Emissions\|Kyoto Gases | gen_13214 | World | 2090 | 2100 | -2974.3899 |
 
 #### Example violation — ground truth
 
 **Most extreme growth rate violation**
 
-| Variable | Scenario | Region | Category | Year (from) | Year (to) | Growth rate |
-| --- | --- | --- | --- | --- | --- | --- |
-| Carbon Sequestration\|CCS | R2p1_SSP5-PkBudg900 | World | C1 | 2020 | 2030 | +1083.6932 |
+| Variable | Scenario | Region | Year (from) | Year (to) | Growth rate |
+| --- | --- | --- | --- | --- | --- |
+| Carbon Sequestration\|CCS | R2p1_SSP5-PkBudg900 | World | 2020 | 2030 | +1083.6932 |
 
 ---
 
@@ -209,9 +201,9 @@ and empirical per-variable bounds derived from ground truth._
 | Source | Timesteps | Violations | Violation rate |
 | --- | --- | --- | --- |
 | Predictions | 4,320,000 | 1,037,278 | 24.011% |
-| Ground truth | 228,266 | 3,238 | 1.419% |
+| Ground truth | 222,820 | 3,238 | 1.453% |
 
-_Predictions show +22.593 pp more violations than ground truth._
+_Predictions show +22.558 pp more violations than ground truth._
 
 ### Violation Rate by Variable — Predictions vs Ground Truth
 
@@ -225,17 +217,17 @@ _The most extreme bounds violation is shown below._
 
 **Most extreme bounds violation**
 
-| Variable | Scenario | Region | Category | Year | Value | Units | Violation type |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Emissions\|Kyoto Gases | gen_20075 | World | C78 | 2090 | 154553.6562 | MtCO2eq/yr | Above empirical upper bound (100010.08) |
+| Variable | Scenario | Region | Year | Value | Units | Violation type |
+| --- | --- | --- | --- | --- | --- | --- |
+| Emissions\|Kyoto Gases | gen_20075 | World | 2090 | 154553.6562 | MtCO2eq/yr | Above empirical upper bound (100010.08) |
 
 #### Example violation — ground truth
 
 **Most extreme bounds violation**
 
-| Variable | Scenario | Region | Category | Year | Value | Units | Violation type |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Emissions\|Kyoto Gases | SSP5-Baseline | World | C8 | 2080 | 155970.0094 | MtCO2eq/yr | Above empirical upper bound (100010.08) |
+| Variable | Scenario | Region | Year | Value | Units | Violation type |
+| --- | --- | --- | --- | --- | --- | --- |
+| Emissions\|Kyoto Gases | SSP5-Baseline | World | 2080 | 155970.0094 | MtCO2eq/yr | Above empirical upper bound (100010.08) |
 
 ---
 

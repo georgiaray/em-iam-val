@@ -1,17 +1,17 @@
 """
-XGBoost (Shin et al. / ml-iam) adapter.
+Shin et al. (ML-IAM) adapter.
 
-Loads model artifacts from the ml-iam RunStore and writes canonical CSVs
+Loads model artifacts from the ml-iam RunStore and writes IAMC-format CSVs
 for use by the em-iam-val validation framework.
 
 Usage:
-    python adapters/xgb_adapter.py --run_id xgb_04 --out_dir adapted-data/
+    python adapters/shin_adapter.py --run_id shin_01 --out_dir adapted-data/
 
 Outputs:
-    adapted-data/xgb_04_predictions.csv
-    adapted-data/xgb_04_ground_truth.csv
+    adapted-data/shin_01_predictions.csv
+    adapted-data/shin_01_ground_truth.csv
 
-The Units column is populated from ml-iam's UNITS_BY_OUTPUT config.
+The Unit column is populated from ml-iam's UNITS_BY_OUTPUT config.
 Note: the ml-iam config may contain unit labeling errors (e.g. Secondary
 Energy variables declared as EJ/yr but stored as PJ/yr). This adapter
 faithfully reports what the config declares. The framework's unit

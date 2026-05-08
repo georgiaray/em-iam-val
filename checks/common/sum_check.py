@@ -5,8 +5,8 @@ Verifies that each parent variable equals the sum of its direct children
 at every timestep, using the | separator convention.
 
 Usage (standalone):
-    python checks/sum_check.py --predictions adapted-data/xgb_04_predictions.csv \\
-                                --run_id xgb_04
+    python checks/sum_check.py --predictions adapted-data/shin_01_predictions.csv \\
+                                --run_id shin_01
 """
 
 from typing import Optional
