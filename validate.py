@@ -35,15 +35,23 @@ sys.path.insert(0, str(REPO_ROOT / "checks"))
 from utils import load_csv, normalize_to_canonical
 
 
-CHECKS = [
-    ("check_plausibility",          "Growth rate plausibility"),
-    ("sum_check",                    "Hierarchy sum check"),
-    ("regional_consistency",         "Regional consistency"),
-    ("bounds_check",                 "Physical bounds"),
-    ("hard_historical_constraints",  "Hard historical constraints (WGIII/AR6)"),
-    ("soft_future_constraints",      "Soft future constraints (WGIII/AR6)"),
-    ("verpoort_constraints",         "Verpoort constraints (IAMC 2025)"),
-    ("inter_variable_correlation",   "Inter-variable correlation"),
+COMMON_CHECKS = [
+    ("common.check_plausibility",          "Growth rate plausibility"),
+    ("common.sum_check",                    "Hierarchy sum check"),
+    ("common.regional_consistency",         "Regional consistency"),
+    ("common.bounds_check",                 "Physical bounds"),
+    ("common.hard_historical_constraints",  "Hard historical constraints (WGIII/AR6)"),
+    ("common.soft_future_constraints",      "Soft future constraints (WGIII/AR6)"),
+    ("common.verpoort_constraints",         "Verpoort constraints (IAMC 2025)"),
+    ("common.inter_variable_correlation",   "Inter-variable correlation"),
+]
+
+GENERATION_CHECKS: list = [
+    # e.g. ("generation.distribution_similarity", "Distribution similarity")
+]
+
+RECONSTRUCTION_CHECKS: list = [
+    # e.g. ("reconstruction.error_metrics", "Per-scenario error metrics")
 ]
 
 
@@ -52,6 +60,7 @@ def run_validation(
     ground_truth_path: str = None,
     run_id: str = "run",
     out_dir: str = "results",
+    method_type: str = None,
     only_checks: list = None,
     skip_checks: list = None,
     report: bool = False,
@@ -61,10 +70,12 @@ def run_validation(
     Run full validation pipeline.
 
     Args:
-        predictions_path: Path to predictions CSV
-        ground_truth_path: Path to ground truth CSV (optional)
+        predictions_path: Path to predictions CSV (IAMC wide format)
+        ground_truth_path: Path to ground truth CSV (optional, IAMC wide format)
         run_id: Run identifier
         out_dir: Output directory
+        method_type: "generation" or "reconstruction" — adds type-specific checks
+                     on top of the common checks. If None, only common checks run.
         only_checks: List of check names to run (default: all)
         skip_checks: List of check names to skip
         report: Generate summary report
@@ -94,9 +105,16 @@ def run_validation(
         print("\nNormalizing ground truth to canonical units...")
         gt_long = normalize_to_canonical(gt_long)
 
-    # Determine which checks to run
+    # Build the full check list for this run
+    all_checks = list(COMMON_CHECKS)
+    if method_type == "generation":
+        all_checks += GENERATION_CHECKS
+    elif method_type == "reconstruction":
+        all_checks += RECONSTRUCTION_CHECKS
+
+    # Apply --only / --skip filters
     checks_to_run = []
-    for check_name, check_label in CHECKS:
+    for check_name, check_label in all_checks:
         if only_checks and check_name not in only_checks:
             continue
         if skip_checks and check_name in skip_checks:
@@ -207,10 +225,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Unified em-iam-val validation runner"
     )
-    parser.add_argument("--predictions", required=True, help="Path to predictions CSV")
-    parser.add_argument("--ground_truth", help="Path to ground truth CSV (optional)")
+    parser.add_argument("--predictions", required=True, help="Path to predictions CSV (IAMC wide format)")
+    parser.add_argument("--ground_truth", help="Path to ground truth CSV (optional, IAMC wide format)")
     parser.add_argument("--run_id", required=True, help="Run identifier")
     parser.add_argument("--out_dir", default="results", help="Output directory (default: results/)")
+    parser.add_argument("--method_type", choices=["generation", "reconstruction"],
+                        help="Emulation method type — adds type-specific checks on top of common checks")
     parser.add_argument("--only", nargs="*", metavar="CHECK",
                         help="Run only these checks (space-separated check names)")
     parser.add_argument("--skip", nargs="*", metavar="CHECK",
@@ -231,8 +251,11 @@ def main():
 
     args = parser.parse_args()
 
-    # Validate check names
-    valid_checks = [name for name, _ in CHECKS]
+    # Validate check names against the full set for the given method_type
+    type_checks = (GENERATION_CHECKS if args.method_type == "generation"
+                   else RECONSTRUCTION_CHECKS if args.method_type == "reconstruction"
+                   else [])
+    valid_checks = [name for name, _ in COMMON_CHECKS + type_checks]
     if args.only:
         for check in args.only:
             if check not in valid_checks:
@@ -262,6 +285,7 @@ def main():
         ground_truth_path=args.ground_truth,
         run_id=args.run_id,
         out_dir=args.out_dir,
+        method_type=args.method_type,
         only_checks=args.only,
         skip_checks=args.skip,
         report=args.report,

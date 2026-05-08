@@ -13,21 +13,21 @@ This framework is developed as part of a research project establishing validatio
 
 The framework has a strict two-layer architecture.
 
-**Adapters** convert dataset-specific artifacts (model checkpoints, numpy arrays, etc.) into a canonical CSV format. They know about RunStore, numpy files, and unit conventions. They produce data and nothing else.
+**Adapters** convert dataset-specific artifacts (model checkpoints, numpy arrays, etc.) into IAMC-format CSV files. They know about RunStore, numpy files, and unit conventions. They produce data and nothing else.
 
-**Checks** consume canonical CSVs. They have no knowledge of where data came from. Each check exposes a `run(predictions, ground_truth, ...)` function that takes DataFrames and a standalone CLI that reads files.
+**Checks** consume IAMC-format CSVs. They have no knowledge of where the data came from. Each check exposes a `run(predictions, ground_truth, ...)` function that takes DataFrames and a standalone CLI that reads files directly.
 
 This means any new emulation study can be validated by writing one adapter.
 
-### Canonical format
+### Data format
 
-All data is long-format CSV with these required columns:
+Input files follow the [IAMC timeseries format](https://docs.ece.iiasa.ac.at/iamc.html) — the standard in the IAM community:
 
 ```
-Model, Scenario, Region, Scenario_Category, Year, Variable, Value, Units
+Model, Scenario, Region, Variable, Unit, 2010, 2020, 2030, ..., 2100
 ```
 
-The `Units` column is populated by adapters and read directly by `normalize_to_canonical()` before any check runs. No separate unit config is needed.
+`load_csv()` accepts IAMC wide format directly — no pre-conversion needed. Internally, the framework converts to long format for processing, but this is invisible to the user.
 
 ### Canonical units
 
@@ -41,25 +41,49 @@ The `Units` column is populated by adapters and read directly by `normalize_to_c
 
 ---
 
+## Check types
+
+Checks are organised into three submodules reflecting the nature of the emulation method being validated:
+
+```python
+from em_iam_val.checks.common import bounds_check, sum_check
+from em_iam_val.checks.generation import distribution_similarity
+from em_iam_val.checks.reconstruction import error_metrics
+```
+
+**`checks/common`** — checks applicable to any set of IAM scenarios, regardless of how they were produced. These are physical plausibility and internal consistency checks. All runs execute these.
+
+**`checks/generation`** — checks specific to generative models (e.g. VAE, cGAN, RCGAN) that produce a *distribution* of scenarios rather than predictions of specific ones. These assess whether the generated distribution resembles real IAM scenario distributions — coverage, diversity, distributional similarity. Pass `--method_type generation` to include these.
+
+**`checks/reconstruction`** — checks specific to reconstruction/emulation models (e.g. XGBoost surrogate) that predict specific output scenarios given inputs, where a 1:1 correspondence with ground truth exists. These assess per-scenario accuracy — RMSE, MAE, R², bias. Pass `--method_type reconstruction` to include these.
+
+---
+
 ## Repository structure
 
 ```
 em-iam-val/
 ├── adapters/
-│   ├── xgb_adapter.py          # ML-IAM (Shin et al.) → canonical CSV
-│   └── li_adapter.py           # Deep-IAM (Li et al.) → canonical CSV
+│   ├── xgb_adapter.py          # ML-IAM (Shin et al.) → IAMC CSV
+│   └── li_adapter.py           # Deep-IAM (Li et al.) → IAMC CSV
 ├── checks/
-│   ├── utils.py                # Canonical format, normalization, shared helpers
-│   ├── bounds_check.py
-│   ├── check_plausibility.py
-│   ├── hard_historical_constraints.py
-│   ├── inter_variable_correlation.py
-│   ├── regional_consistency.py
-│   ├── soft_future_constraints.py
-│   └── sum_check.py
-├── adapted-data/               # Canonical CSVs written by adapters (gitignored)
+│   ├── utils.py                # IAMC loading, unit normalisation, shared helpers
+│   ├── common/                 # Checks applicable to all emulation methods
+│   │   ├── bounds_check.py
+│   │   ├── check_plausibility.py
+│   │   ├── hard_historical_constraints.py
+│   │   ├── inter_variable_correlation.py
+│   │   ├── regional_consistency.py
+│   │   ├── soft_future_constraints.py
+│   │   ├── sum_check.py
+│   │   └── verpoort_constraints.py
+│   ├── generation/             # Checks for generative emulation methods
+│   │   └── __init__.py
+│   └── reconstruction/         # Checks for reconstruction/surrogate methods
+│       └── __init__.py
+├── adapted-data/               # IAMC CSVs written by adapters (gitignored)
 ├── results/                    # Check outputs per run_id (gitignored)
-├── reports/                    # Generated reports
+├── reports/                    # Generated validation reports
 ├── validate.py                 # Unified runner
 ├── pyproject.toml
 └── README.md
@@ -81,7 +105,7 @@ poetry shell
 
 ### Step 1 — Adapt your data
 
-Run the appropriate adapter once to convert model artifacts into canonical CSVs.
+Run the appropriate adapter once to convert model artifacts into IAMC-format CSVs.
 
 **Shin et al. (ML-IAM / XGBoost):**
 
@@ -99,20 +123,31 @@ python adapters/li_adapter.py --model vae --run_id li_vae_01 --out_dir adapted-d
 
 Requires the Li-emulation repository at `../Li-emulation`. Produces `adapted-data/li_vae_01_predictions.csv` and `adapted-data/li_vae_01_ground_truth.csv`.
 
+**Any standard IAMC file:**
+
+No adapter needed — pass directly to `validate.py`.
+
 ### Step 2 — Validate
 
 ```bash
-# Shin et al.
+# Shin et al. (reconstruction method)
 python validate.py \
     --predictions adapted-data/xgb_04_predictions.csv \
     --ground_truth adapted-data/xgb_04_ground_truth.csv \
-    --run_id xgb_04
+    --run_id xgb_04 \
+    --method_type reconstruction
 
-# Li et al.
+# Li et al. (generation method)
 python validate.py \
     --predictions adapted-data/li_vae_01_predictions.csv \
     --ground_truth adapted-data/li_vae_01_ground_truth.csv \
-    --run_id li_vae_01
+    --run_id li_vae_01 \
+    --method_type generation
+
+# Any IAMC file, common checks only
+python validate.py \
+    --predictions my_scenarios.csv \
+    --run_id my_run
 ```
 
 Results are written to `results/<run_id>/<check_name>/`.
@@ -121,12 +156,12 @@ Results are written to `results/<run_id>/<check_name>/`.
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--method_type` | (none) | `generation` or `reconstruction` — adds type-specific checks on top of common |
 | `--only` | (all) | Run only these checks (space-separated names) |
 | `--skip` | (none) | Skip these checks |
 | `--percentile` | 1.0 | Tail percentile for empirical bounds |
 | `--threshold` | 0.012 | Relative error tolerance for sum/regional checks |
 | `--world_region` | World | Region label for global aggregate |
-| `--by_category` | off | Break down plausibility violations by scenario category |
 | `--report` | off | Generate a summary report after validation |
 
 ### Running a single check
@@ -134,12 +169,12 @@ Results are written to `results/<run_id>/<check_name>/`.
 Each check can be run directly:
 
 ```bash
-python checks/bounds_check.py \
+python checks/common/bounds_check.py \
     --predictions adapted-data/xgb_04_predictions.csv \
     --ground_truth adapted-data/xgb_04_ground_truth.csv \
     --run_id xgb_04
 
-python checks/hard_historical_constraints.py \
+python checks/common/hard_historical_constraints.py \
     --predictions adapted-data/li_vae_01_predictions.csv \
     --run_id li_vae_01
 ```
@@ -148,17 +183,21 @@ python checks/hard_historical_constraints.py \
 
 ## Checks
 
-### `check_plausibility` — Growth Rate Plausibility
+### Common checks
+
+These run for all method types.
+
+#### `common.check_plausibility` — Growth Rate Plausibility
 
 Computes period-on-period growth rates for every trajectory and checks they fall within empirically-derived bounds from the ground truth data (default 1st/99th percentile of observed growth rates per variable). Flags any timestep where the predicted growth rate falls outside those bounds.
 
 Required: any time-varying variables. If ground truth is not provided, bounds are derived from the predictions themselves.
 
-**Key options:** `--percentile` (default 1.0), `--by_category`
+**Key options:** `--percentile` (default 1.0)
 
 ---
 
-### `sum_check` — Hierarchy Sum Check
+#### `common.sum_check` — Hierarchy Sum Check
 
 Auto-discovers parent-child variable relationships using the `|` separator convention and verifies that each predicted parent equals the sum of its direct children:
 
@@ -172,7 +211,7 @@ A scenario passes if the mean relative error is below the threshold (default 1.2
 
 ---
 
-### `regional_consistency` — Regional Consistency Check
+#### `common.regional_consistency` — Regional Consistency Check
 
 Checks that World values equal the sum of subregion values across complete R5, R6, and R10 groupings. Partial groupings are skipped. Not applicable to World-only datasets.
 
@@ -180,18 +219,18 @@ Checks that World values equal the sum of subregion values across complete R5, R
 
 ---
 
-### `bounds_check` — Physical Bounds Check
+#### `common.bounds_check` — Physical Bounds Check
 
 Two types of bounds:
 
 - **Hard physical bounds** — energy generation variables cannot be negative.
-- **Empirical bounds** — per-variable percentile range derived from ground truth (default 1st/99th percentile), representing the envelope of values seen in real IAM data. Disable with `--no_empirical`.
+- **Empirical bounds** — per-variable percentile range derived from ground truth (default 1st/99th percentile). Disable with `--no_empirical`.
 
 **Key options:** `--percentile` (default 1.0), `--no_empirical`
 
 ---
 
-### `hard_historical_constraints` — Hard Historical Constraints
+#### `common.hard_historical_constraints` — Hard Historical Constraints
 
 Checks World-level predictions at the 2020 reference year against the historical anchor values from the AR6 scenario vetting process (Nicholls et al. 2022, Table 11). Each scenario is classified as PASS (within inner IP-range), WARN (within outer tolerance but outside IP-range), or FAIL. Sub-checks are automatically skipped if required variables are absent.
 
@@ -205,17 +244,15 @@ Checks World-level predictions at the 2020 reference year against the historical
 | `nuclear_energy_2020` | `Primary Energy\|Nuclear` | 9.77 EJ | ±30% | ±20% |
 | `solar_wind_2020` | `Primary Energy\|Solar` + `\|Wind` | 8.51 EJ | ±50% | ±25% |
 
-The nuclear and solar/wind checks use `Primary Energy` variables because the AR6 vetting was designed to detect primary energy accounting errors (direct vs thermal equivalent convention). `Secondary Energy|Electricity` is not an equivalent substitute.
-
-If computed values appear implausibly scaled (median more than 100× off the reference), a unit mismatch warning is included in the output.
+The nuclear and solar/wind checks use `Primary Energy` variables because the AR6 vetting was designed to detect primary energy accounting errors (direct vs thermal equivalent convention).
 
 **Key options:** `--world_region` (default "World")
 
 ---
 
-### `soft_future_constraints` — Soft Future Constraints
+#### `common.soft_future_constraints` — Soft Future Constraints
 
-Checks World-level predictions at specific future years against domain-knowledge plausibility bounds from the AR6 vetting (Table 11). These criteria were flagged as potentially problematic in AR6 but not used as hard exclusion criteria. They are warranted here via the constraint-violation argument: the IAMs were themselves vetted against these criteria, so emulator violations represent emulation failures.
+Checks World-level predictions at specific future years against domain-knowledge plausibility bounds from the AR6 vetting (Table 11).
 
 | Sub-check | Variable | Year | Criterion |
 |-----------|---------|------|-----------|
@@ -228,17 +265,43 @@ Checks World-level predictions at specific future years against domain-knowledge
 
 ---
 
-### `inter_variable_correlation` — Inter-variable Correlation
+#### `common.verpoort_constraints` — Verpoort Constraints (IAMC 2025)
 
-Computes Pearson r² correlation matrices between all predicted variables at years 2030, 2050, and 2100, and compares against the ground truth correlation structure. A well-calibrated emulator should preserve the inter-variable relationships present in the parent simulation. Produces heatmap figures and a summary table of mean |Δr²| per year. Belongs to the **variance and covariance metrics** validation family.
+Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
+
+Status: PASS = within medium-concern bounds, WARN = within strong-concern bounds, FAIL = outside strong-concern (exclusion-level) bounds.
+
+---
+
+#### `common.inter_variable_correlation` — Inter-variable Correlation
+
+Computes Pearson r² correlation matrices between all predicted variables at years 2030, 2050, and 2100, and compares against the ground truth correlation structure. A well-calibrated emulator should preserve the inter-variable relationships present in the parent simulation. Produces heatmap figures and a summary table of mean |Δr²| per year.
 
 **Key options:** `--years` (default 2030 2050 2100)
 
 ---
 
+### Generation checks
+
+Run when `--method_type generation` is passed. These assess whether a generative model produces a distribution of scenarios that resembles real IAM scenario distributions — coverage, diversity, and distributional similarity. A generation model has no 1:1 correspondence with ground truth, so these checks operate at the distributional level.
+
+*Coming soon.*
+
+---
+
+### Reconstruction checks
+
+Run when `--method_type reconstruction` is passed. These assess per-scenario accuracy where a 1:1 correspondence between predicted and ground truth scenarios exists — RMSE, MAE, R², and bias analysis by variable, region, and year.
+
+*Coming soon.*
+
+---
+
 ## Adding a new check
 
-1. Create `checks/<your_check>.py`. The `run()` signature must be:
+### Common check
+
+1. Create `checks/common/<your_check>.py`. The `run()` signature must be:
    ```python
    def run(predictions: pd.DataFrame, ground_truth: pd.DataFrame = None,
            out_dir: str = "results", run_id: str = "run", **kwargs) -> dict:
@@ -249,15 +312,21 @@ Computes Pearson r² correlation matrices between all predicted variables at yea
 
 3. Register it in `validate.py`:
    ```python
-   CHECKS = [
+   COMMON_CHECKS = [
        ...
-       ("your_check", "Human-readable description"),
+       ("common.your_check", "Human-readable description"),
    ]
    ```
 
+### Generation or reconstruction check
+
+Same as above, but place the file in `checks/generation/` or `checks/reconstruction/` and register in `GENERATION_CHECKS` or `RECONSTRUCTION_CHECKS` in `validate.py`.
+
+---
+
 ## Adding a new dataset
 
-Write one adapter in `adapters/<dataset>_adapter.py`. Its job: load whatever format your model uses, set the `Units` column correctly for each variable, write canonical CSVs. `normalize_to_canonical()` handles the rest.
+Write one adapter in `adapters/<dataset>_adapter.py`. Its job: load whatever format your model uses, build a long-format DataFrame with columns `Model, Scenario, Region, Year, Variable, Value, Units`, then call `long_to_iamc()` from `checks/utils.py` before writing to CSV. `normalize_to_canonical()` handles unit conversion at load time.
 
 ---
 

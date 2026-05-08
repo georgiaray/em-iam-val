@@ -15,7 +15,7 @@ import argparse
 import pandas as pd
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     IDX, load_csv, normalize_to_canonical,
     make_out_dir, save_check_outputs
