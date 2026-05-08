@@ -344,26 +344,6 @@ Write one adapter in `adapters/<dataset>_adapter.py`. Its job: load whatever for
 
 ---
 
-## Citation
-
-If you use this framework, please also cite the emulation study whose artifacts you are validating.
-
-For ML-IAM (Shin et al.):
-
-```bibtex
-@article{egusphere-2025-5305,
-  AUTHOR  = {Shin, Y. and Lee, C. and Kim, E. and Myung, J. and Park, K. and Ha, J. and Choi, M.-Y. and Kim, B. and Ka, H. W. and Woo, J.-H. and Oh, A. and McJeon, H.},
-  TITLE   = {ML-IAM v1.0: Emulating Integrated Assessment Models With Machine Learning},
-  JOURNAL = {EGUsphere},
-  VOLUME  = {2026},
-  YEAR    = {2026},
-  PAGES   = {1--24},
-  DOI     = {10.5194/egusphere-2025-5305}
-}
-```
-
----
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
