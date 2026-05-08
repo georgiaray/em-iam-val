@@ -7,7 +7,7 @@ This framework establishes validation standards for the emerging field of IAM em
 Two published emulation studies are included as worked examples demonstrating the framework's application:
 
 - **[ML-IAM v1.0](https://egusphere.copernicus.org/preprints/2026/egusphere-2025-5305/)** (Shin et al., 2026) — XGBoost-based reconstruction emulator; a supervised regression approach that predicts specific IAM output scenarios given input conditions
-- **[Deep-IAM](https://zenodo.org/)** (Li et al.) — generative deep learning emulator (VAE / cGAN / RCGAN) that produces a distribution of plausible IAM scenarios conditioned on policy labels
+- **[Deep-IAM](https://www.nature.com/articles/s41558-025-02352-8)** (Li et al.) — generative deep learning emulator (VAE / cGAN / RCGAN) that produces a distribution of plausible IAM scenarios conditioned on policy labels
 
 ---
 
