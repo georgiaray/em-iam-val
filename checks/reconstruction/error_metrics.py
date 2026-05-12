@@ -204,11 +204,9 @@ def compute_overall_summary(by_var_region: pd.DataFrame) -> pd.DataFrame:
             "N_Regions":      len(grp),
             "Mean_nRMSE":     mean_nrmse,
             "Max_nRMSE":      grp["nRMSE"].max(),
-            "Mean_RMSE":      np.average(grp["RMSE"],  weights=grp["N"]),
-            "Mean_MAE":       np.average(grp["MAE"],   weights=grp["N"]),
+            "Mean_nRMSE":     mean_nrmse,
             "Mean_nMAE":      np.average(grp["nMAE"].fillna(0), weights=grp["N"]),
             "Median_R2":      grp["R2"].median(),  # median: robust to near-zero-variance regions
-            "Mean_Bias":      np.average(grp["Bias"],  weights=grp["N"]),
             "Mean_nBias":     np.average(grp["nBias"].fillna(0), weights=grp["N"]),
         })
     return pd.DataFrame(rows).sort_values("Mean_nRMSE", ascending=False).reset_index(drop=True)

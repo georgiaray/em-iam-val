@@ -275,9 +275,22 @@ Run when `--method_type generation` is passed. These assess whether a generative
 
 ### Reconstruction checks
 
-Run when `--method_type reconstruction` is passed. These assess per-scenario accuracy where a 1:1 correspondence between predicted and ground truth scenarios exists — RMSE, MAE, R², and bias analysis by variable, region, and year.
+Run when `--method_type reconstruction` is passed. These assess per-scenario accuracy where a 1:1 correspondence between predicted and ground truth scenarios exists.
 
-*Coming soon.*
+#### `reconstruction.error_metrics` — Reconstruction Error Metrics
+
+Computes normalised RMSE (nRMSE), normalised MAE (nMAE), R², and normalised bias (nBias) between emulator predictions and held-out IAM ground truth scenarios. All metrics are normalised by the mean absolute ground truth value per variable-region pair, making them dimensionless and comparable across variables with different units and scales.
+
+Outputs are broken down three ways:
+
+- **By variable and region** (`results.csv`) — per (Variable, Region) metrics, used for the portrait plot
+- **By variable** (`summary.csv`) — per-variable headline metrics aggregated across regions (nRMSE and nMAE weighted by N; R² reported as median to handle near-zero-variance regions robustly)
+- **By variable and year** (`by_variable_year.csv`) — per (Variable, Year) metrics for diagnosing autoregressive error accumulation over the projection horizon
+- **Portrait matrix** (`portrait_matrix.csv`) — nRMSE pivoted as Variable × Region, suitable for direct use as a portrait plot
+
+The report section includes an overall aggregate table (mean nRMSE, mean nMAE, median R², mean nBias), a Variable × Region nRMSE heatmap (portrait plot), and a temporal drift line chart.
+
+**Note on R²:** Pooled R² (as reported by Shin et al., 0.97) is computed across all variables, regions, and time points simultaneously, inflating the score by capturing trivial between-variable and between-region variance. This framework instead computes R² within each (Variable, Region) pair, providing a more conservative and meaningful measure of emulation quality.
 
 ---
 

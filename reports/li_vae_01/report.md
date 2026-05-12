@@ -1,7 +1,7 @@
 # Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-08 11:23
+**Generated:** 2026-05-12 15:31
 **Results:** `results/li_vae_01/`
 
 ---
@@ -44,22 +44,18 @@ _No complete regional groupings in this dataset._
 | ccs_2030 | 95.3% | 4.7% | 91.3% | 8.7% |
 | nuclear_electricity_2030 | 97.8% | 2.2% | 94.1% | 5.9% |
 
-**7. SCI Vetting Checks**
-
-| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| hist_primary_coal | 61.5% | 0.0% | 38.5% | 97.9% | 0.0% | 2.1% |
-| hist_primary_gas | 59.8% | 0.0% | 40.2% | 98.6% | 0.0% | 1.4% |
-| hist_primary_oil | 44.0% | 0.0% | 56.0% | 97.3% | 0.0% | 2.7% |
-| longterm_ccs_2035 | 92.8% | 7.2% | 0.0% | 87.5% | 12.5% | 0.0% |
-| longterm_ccs_2040 | 89.3% | 10.7% | 0.0% | 82.3% | 17.7% | 0.0% |
-| nearterm_ccs | 35.0% | 43.7% | 21.3% | 11.6% | 55.6% | 32.8% |
-
-**7. Inter-variable Correlations**
+**8. Inter-variable Correlations**
 
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
 | Mean \|Δr²\| vs ground truth | 0.1383 | 0.0000 (reference) |
+
+**9. Variance Fidelity**
+
+| Metric | Value |
+| --- | --- |
+| Median variance ratio | 0.6643 |
+| Pass rate (variable-regions) | 37.5% |
 
 ---
 
@@ -273,17 +269,7 @@ at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
 Status: PASS = within medium-concern bounds, WARN = within strong-concern bounds,
 FAIL = outside strong-concern (exclusion-level) bounds._
 
-| Sub-check | N | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| hist_primary_coal | 120000 | 61.5000 | 0.0000 | 38.5000 | 97.9000 | 2.1000 |
-| hist_primary_gas | 120000 | 59.8000 | 0.0000 | 40.2000 | 98.6000 | 1.4000 |
-| hist_primary_oil | 120000 | 44.0000 | 0.0000 | 56.0000 | 97.3000 | 2.7000 |
-| longterm_ccs_2035 | 30000 | 92.8000 | 7.2000 | 0.0000 | 87.5000 | 0.0000 |
-| longterm_ccs_2040 | 30000 | 89.3000 | 10.7000 | 0.0000 | 82.3000 | 0.0000 |
-| nearterm_ccs | 30000 | 35.0000 | 43.7000 | 21.3000 | 11.6000 | 32.8000 |
-
-
-_Not run: hist_co2_eip (['Emissions|CO2'])_
+_Verpoort constraints results not found. Run `validate.py` first._
 
 
 ---
@@ -323,4 +309,67 @@ _Average absolute difference between predictions and ground truth correlation ma
 | 2030.0 | 16.0 | 0.146 |
 | 2050.0 | 16.0 | 0.1468 |
 | 2100.0 | 16.0 | 0.122 |
+
+
+---
+
+## 9. Variance Fidelity
+
+_Checks whether the emulator reproduces the marginal variance of each output
+variable. Inter-variable correlation checks preserve the shape of variable
+relationships but normalise out variance — this check catches whether the
+emulator is systematically over- or under-dispersed. Variance ratio =
+Var(predictions) / Var(ground truth); a well-calibrated emulator should be
+close to 1.0. Applicable to both reconstruction and generative runs._
+
+**Variable-region pairs evaluated:** 16  
+**Skipped** (near-constant GT): 0  
+**PASS:** 6 &nbsp; **WARN:** 3 &nbsp; **FAIL:** 7  
+_PASS = variance ratio within 0.5–2.0×; WARN = 0.25–0.5× or 2.0–4.0×; FAIL = outside 4×._
+
+### Per-variable Summary
+
+_Median variance ratio and CV ratio across regions. Values below 1.0 indicate the emulator is under-dispersed; above 1.0 it is over-dispersed._
+
+| Variable | Var Ratio | CV Ratio | Pass Rate | Warn Rate | Fail Rate |
+| --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Gas | 0.0045 | 1.1163 | 0.0000 | 0.0000 | 1.0000 |
+| Secondary Energy\|Electricity\|Hydro | 0.0474 | 4.8995 | 0.0000 | 0.0000 | 1.0000 |
+| Secondary Energy\|Electricity\|Solar | 0.0833 | 0.9139 | 0.0000 | 0.0000 | 1.0000 |
+| Secondary Energy\|Electricity\|Coal | 0.1000 | 0.2552 | 0.0000 | 0.0000 | 1.0000 |
+| Secondary Energy\|Electricity\|Wind | 0.1831 | 0.8061 | 0.0000 | 0.0000 | 1.0000 |
+| Secondary Energy\|Electricity | 0.3150 | 1.8258 | 0.0000 | 1.0000 | 0.0000 |
+| Primary Energy\|Coal | 0.3217 | 0.4032 | 0.0000 | 1.0000 | 0.0000 |
+| Primary Energy\|Oil | 0.5527 | 0.6201 | 1.0000 | 0.0000 | 0.0000 |
+| Secondary Energy\|Electricity\|Biomass | 0.7758 | 1.0229 | 1.0000 | 0.0000 | 0.0000 |
+| Carbon Sequestration\|CCS | 0.8890 | 1.0995 | 1.0000 | 0.0000 | 0.0000 |
+| Secondary Energy\|Electricity\|Nuclear | 0.9190 | 0.9953 | 1.0000 | 0.0000 | 0.0000 |
+| Emissions\|Kyoto Gases | 1.0302 | 0.7888 | 1.0000 | 0.0000 | 0.0000 |
+| Final Energy\|Liquids | 1.1486 | 0.9310 | 1.0000 | 0.0000 | 0.0000 |
+| Primary Energy\|Gas | 2.1135 | 1.6017 | 0.0000 | 1.0000 | 0.0000 |
+| Secondary Energy\|Electricity\|Oil | 607.1925 | 0.5730 | 0.0000 | 0.0000 | 1.0000 |
+| Secondary Energy\|Electricity\|Geothermal | 5883.0719 | 0.5151 | 0.0000 | 0.0000 | 1.0000 |
+
+### Variance Ratio Distribution
+
+![Variance ratio distribution](figures/variance_fidelity_distribution.png)
+
+### Median Variance Ratio by Variable
+
+_Green = PASS, orange = WARN, red = FAIL._
+
+![Variance ratio by variable](figures/variance_fidelity_by_variable.png)
+
+
+---
+
+## 10. Reconstruction Error Metrics
+
+_Applies to reconstruction emulators only (1:1 correspondence between predicted
+and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
+is dimensionless and comparable across variables. The portrait plot shows performance
+across all variable-region pairs simultaneously. The temporal drift chart diagnoses
+autoregressive error accumulation over the projection horizon._
+
+_Error metrics results not found. Run `validate.py` with `--method_type reconstruction` to generate them._
 
