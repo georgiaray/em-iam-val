@@ -7,7 +7,7 @@ This framework establishes validation standards for the emerging field of IAM em
 Two published emulation studies are included as worked examples demonstrating the framework's application:
 
 - **[ML-IAM v1.0](https://egusphere.copernicus.org/preprints/2026/egusphere-2025-5305/)** (Shin et al., 2026) — XGBoost-based reconstruction emulator; a supervised regression approach that predicts specific IAM output scenarios given input conditions
-- **[Deep-IAM](https://www.nature.com/articles/s41558-025-02352-8)** (Li et al.) — generative deep learning emulator (VAE / cGAN / RCGAN) that produces a distribution of plausible IAM scenarios conditioned on policy labels
+- **[Deep-IAM](https://www.nature.com/articles/s41558-025-02352-8)** (Li et al., 2025) — generative deep learning emulator (VAE / cGAN / RCGAN) that produces a distribution of plausible IAM scenarios conditioned on policy labels
 
 ---
 
@@ -78,7 +78,7 @@ em-iam-val/
 │   │   ├── regional_consistency.py
 │   │   ├── soft_future_constraints.py
 │   │   ├── sum_check.py
-│   │   └── verpoort_constraints.py
+│   │   └── sci_checks.py
 │   ├── generation/             # Checks for generative emulation methods
 │   │   └── __init__.py
 │   └── reconstruction/         # Checks for reconstruction/surrogate methods
@@ -249,7 +249,7 @@ Checks World-level predictions at specific future years against domain-knowledge
 
 ---
 
-#### `common.verpoort_constraints` — Verpoort Constraints (IAMC 2025)
+#### `common.sci_checks` — SCI Vetting Checks
 
 Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
 

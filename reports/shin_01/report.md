@@ -1,7 +1,7 @@
 # Validation Report: shin_01
 
 **Run ID:** `shin_01`
-**Generated:** 2026-05-08 11:21
+**Generated:** 2026-05-12 14:33
 **Results:** `results/shin_01/`
 
 ---
@@ -48,15 +48,6 @@ _No complete regional groupings in this dataset._
 | ch4_2040 | 99.2% | 0.8% | 99.2% | 0.8% |
 | co2_not_negative_2030 | 100.0% | 0.0% | 100.0% | 0.0% |
 | nuclear_electricity_2030 | 0.0% | 100.0% | 0.0% | 100.0% |
-
-**7. Verpoort Constraints (IAMC 2025)**
-
-| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| hist_co2_eip | 94.3% | 0.0% | 5.7% | 94.7% | 0.0% | 5.3% |
-| hist_primary_coal | 81.6% | 0.0% | 18.4% | 81.1% | 0.0% | 18.9% |
-| hist_primary_gas | 99.6% | 0.0% | 0.4% | 99.2% | 0.0% | 0.8% |
-| hist_primary_oil | 98.8% | 0.0% | 1.2% | 98.8% | 0.0% | 1.2% |
 
 **7. Inter-variable Correlations**
 
@@ -282,7 +273,7 @@ _Skipped sub-checks (required variables absent): ccs_2030: ['Carbon Sequestratio
 
 ---
 
-## 7. Verpoort Constraints (IAMC 2025)
+## 7. SCI Vetting Checks
 
 _Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published
 successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data
@@ -290,15 +281,7 @@ at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
 Status: PASS = within medium-concern bounds, WARN = within strong-concern bounds,
 FAIL = outside strong-concern (exclusion-level) bounds._
 
-| Sub-check | N | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- |
-| hist_co2_eip | 244 | 94.3000 | 5.7000 | 94.7000 | 5.3000 |
-| hist_primary_coal | 244 | 81.6000 | 18.4000 | 81.1000 | 18.9000 |
-| hist_primary_gas | 244 | 99.6000 | 0.4000 | 99.2000 | 0.8000 |
-| hist_primary_oil | 244 | 98.8000 | 1.2000 | 98.8000 | 1.2000 |
-
-
-_Not run: nearterm_ccs (['Carbon Sequestration|CCS']), longterm_ccs_2035 (['Carbon Sequestration|CCS']), longterm_ccs_2040 (['Carbon Sequestration|CCS'])_
+_Verpoort constraints results not found. Run `validate.py` first._
 
 
 ---
@@ -338,4 +321,53 @@ _Average absolute difference between predictions and ground truth correlation ma
 | 2030.0 | 19.0 | 0.0219 |
 | 2050.0 | 19.0 | 0.0261 |
 | 2100.0 | 19.0 | 0.035 |
+
+
+---
+
+## 9. Reconstruction Error Metrics
+
+_Applies to reconstruction emulators only (1:1 correspondence between predicted
+and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
+is dimensionless and comparable across variables. The portrait plot shows performance
+across all variable-region pairs simultaneously. The temporal drift chart diagnoses
+autoregressive error accumulation over the projection horizon._
+
+### Per-variable Summary
+
+_Metrics averaged over all regions. nRMSE = RMSE / mean(|ground truth|) — dimensionless, comparable across variables. Lower is better._
+
+| Variable | Units | nRMSE | RMSE | MAE | R2 | Bias |
+| --- | --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Coal | EJ/yr | 8692.6506 | 735.4322 | 275.0868 | -4515187.3978 | -10.7167 |
+| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 660.5368 | 931.0029 | 410.0177 | -3706023.4764 | 77.8554 |
+| Primary Energy\|Nuclear | EJ | 182.7484 | 0.9637 | 0.4325 | 0.6033 | 0.0830 |
+| Secondary Energy\|Electricity\|Hydro | EJ/yr | 168.6258 | 304.1664 | 150.3650 | -1113355.0781 | 0.9712 |
+| Secondary Energy\|Electricity\|Oil | EJ/yr | 115.6841 | 53.7048 | 16.2562 | -122008.8536 | 3.8157 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | 80.4899 | 537.4479 | 200.1244 | -118153.0741 | 34.1752 |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 29.1937 | 93.0242 | 31.5789 | -57775.2221 | 7.3822 |
+| Primary Energy\|Coal | EJ | 2.0300 | 2.7643 | 1.2147 | -43.7133 | 0.0205 |
+| Secondary Energy\|Electricity\|Gas | EJ/yr | 1.0675 | 936.2636 | 474.9392 | -8.5900 | -129.6940 |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.6225 | 1806.7993 | 863.6720 | 0.0973 | 16.2055 |
+| Primary Energy\|Wind | EJ | 0.6044 | 1.8232 | 0.8813 | 0.0093 | 0.0463 |
+| Primary Energy\|Solar | EJ | 0.5604 | 2.0602 | 0.9986 | -0.3354 | 0.0842 |
+| Primary Energy\|Gas | EJ | 0.4875 | 2.8792 | 1.6164 | -0.4568 | -0.2067 |
+| Emissions\|CO2 | Mt CO2/yr | 0.4751 | 581.2167 | 304.1740 | 0.3081 | -4.6647 |
+| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.4184 | 1718.4093 | 836.6479 | 0.5380 | 22.8162 |
+| Primary Energy\|Oil | EJ | 0.2877 | 2.3576 | 1.2073 | 0.5268 | -0.0812 |
+| Secondary Energy\|Electricity | EJ/yr | 0.2552 | 3105.8114 | 1595.6261 | 0.5750 | 124.9341 |
+| Emissions\|CH4 | Mt CH4/yr | 0.2266 | 3.2327 | 1.6861 | 0.4968 | 0.0240 |
+| Emissions\|N2O | Mt N2O/yr | 0.2024 | 196.6245 | 62.2776 | -0.8303 | -1.8153 |
+
+### Portrait Plot (Variable × Region)
+
+_Normalised RMSE for each variable-region pair. nRMSE > 1.0 (dark red) means prediction error exceeds the typical magnitude of the ground truth for that pair. Cells capped at 2.0 for display._
+
+![Portrait plot](figures/error_metrics_portrait.png)
+
+### Temporal Drift
+
+_nRMSE by year, aggregated over all regions and scenarios. Rising values indicate autoregressive error accumulation over the projection horizon._
+
+![Temporal drift](figures/error_metrics_temporal_drift.png)
 

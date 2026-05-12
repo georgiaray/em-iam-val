@@ -42,7 +42,7 @@ COMMON_CHECKS = [
     ("common.bounds_check",                 "Physical bounds"),
     ("common.hard_historical_constraints",  "Hard historical constraints (WGIII/AR6)"),
     ("common.soft_future_constraints",      "Soft future constraints (WGIII/AR6)"),
-    ("common.verpoort_constraints",         "Verpoort constraints (IAMC 2025)"),
+    ("common.sci_checks",         "SCI vetting checks"),
     ("common.inter_variable_correlation",   "Inter-variable correlation"),
 ]
 
@@ -51,7 +51,7 @@ GENERATION_CHECKS: list = [
 ]
 
 RECONSTRUCTION_CHECKS: list = [
-    # e.g. ("reconstruction.error_metrics", "Per-scenario error metrics")
+    ("reconstruction.error_metrics", "Per-scenario error metrics (nRMSE, RMSE, MAE, R², bias)"),
 ]
 
 

@@ -476,11 +476,11 @@ def section_overview(run_dir: Path) -> str:
         blocks.append("**6. Soft Future Constraints**\n\n" + tbl)
 
     # 7. Verpoort constraints
-    vc_raw    = load(run_dir, "verpoort_constraints", "results.csv")
-    gt_vc_raw = load(run_dir, "verpoort_constraints_ground_truth", "results.csv")
+    vc_raw    = load(run_dir, "sci_checks", "results.csv")
+    gt_vc_raw = load(run_dir, "sci_checks_ground_truth", "results.csv")
     if vc_raw is not None and not vc_raw.empty:
         tbl = _constraint_table(vc_raw, gt_vc_raw, has_warn=True)
-        blocks.append("**7. Verpoort Constraints (IAMC 2025)**\n\n" + tbl)
+        blocks.append("**7. SCI Vetting Checks**\n\n" + tbl)
 
     # 8. Inter-variable Correlations
     corr_sum = load(run_dir, "inter_variable_correlation", "summary.csv")
@@ -997,11 +997,11 @@ def section_soft_future(run_dir: Path) -> str:
 # Verpoort constraints section
 # ---------------------------------------------------------------------------
 
-def section_verpoort(run_dir: Path) -> str:
+def section_sci_checks(run_dir: Path) -> str:
     """Verpoort et al. (2025) IAMC vetting criteria."""
-    pred = load(run_dir, "verpoort_constraints", "results.csv")
-    gt   = load(run_dir, "verpoort_constraints_ground_truth", "results.csv")
-    skipped_path = run_dir / "verpoort_constraints" / "skipped.csv"
+    pred = load(run_dir, "sci_checks", "results.csv")
+    gt   = load(run_dir, "sci_checks_ground_truth", "results.csv")
+    skipped_path = run_dir / "sci_checks" / "skipped.csv"
 
     if pred is None:
         return "_Verpoort constraints results not found. Run `validate.py` first._\n"
@@ -1044,7 +1044,7 @@ def section_verpoort(run_dir: Path) -> str:
             skipped_list = sk.apply(lambda r: f"{r['constraint']} ({r['reason']})", axis=1).tolist()
             blocks.append(f"\n_Not run: {', '.join(skipped_list)}_")
 
-    unit_warn_path = run_dir / "verpoort_constraints" / "unit_warnings.csv"
+    unit_warn_path = run_dir / "sci_checks" / "unit_warnings.csv"
     if unit_warn_path.exists():
         uwdf = pd.read_csv(unit_warn_path)
         if not uwdf.empty:
@@ -1105,6 +1105,136 @@ def section_correlations(run_dir: Path, fig_dir: Path) -> tuple:
 
 
 # ---------------------------------------------------------------------------
+# Error metrics section  (reconstruction only)
+# ---------------------------------------------------------------------------
+
+def section_error_metrics(run_dir: Path, fig_dir: Path) -> tuple:
+    """
+    Portrait plot (Variable × Region nRMSE heatmap) plus headline summary
+    table and temporal drift chart. Only present for reconstruction runs.
+    """
+    summary   = load(run_dir, "error_metrics", "summary.csv")
+    by_vr     = load(run_dir, "error_metrics", "results.csv")
+    by_vy     = load(run_dir, "error_metrics", "by_variable_year.csv")
+    portrait  = load(run_dir, "error_metrics", "portrait_matrix.csv")
+
+    if summary is None:
+        return (
+            "_Error metrics results not found. Run `validate.py` with "
+            "`--method_type reconstruction` to generate them._\n",
+            [],
+        )
+
+    blocks  = []
+    figures = []
+
+    # Headline summary table
+    cols = ["Variable", "Units", "Mean_nRMSE", "Mean_RMSE", "Mean_MAE", "Mean_R2", "Mean_Bias"]
+    cols = [c for c in cols if c in summary.columns]
+    tbl  = summary[cols].copy()
+    tbl.columns = [
+        c.replace("Mean_", "").replace("_", " ") for c in cols
+    ]
+    blocks.append(
+        "### Per-variable Summary\n\n"
+        "_Metrics averaged over all regions. nRMSE = RMSE / mean(|ground truth|) — "
+        "dimensionless, comparable across variables. Lower is better._\n\n"
+        + md_table(tbl)
+    )
+
+    # Portrait plot — Variable × Region nRMSE heatmap
+    if portrait is not None and not portrait.empty:
+        portrait = portrait.set_index("Variable") if "Variable" in portrait.columns else portrait
+        # Drop columns that are entirely NaN
+        portrait = portrait.dropna(axis=1, how="all").dropna(axis=0, how="all")
+
+        if not portrait.empty:
+            n_vars    = len(portrait)
+            n_regions = len(portrait.columns)
+            fig_h     = max(3.0, n_vars * 0.55)
+            fig_w     = max(4.0, n_regions * 1.1 + 2.0)
+
+            fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+            data    = portrait.values.astype(float)
+
+            # Cap display at 2.0 so outlier regions don't wash out the colour scale
+            vmax = min(np.nanmax(data), 2.0)
+            im   = ax.imshow(data, aspect="auto", cmap="YlOrRd",
+                             vmin=0, vmax=vmax, interpolation="nearest")
+
+            ax.set_xticks(range(n_regions))
+            ax.set_xticklabels(portrait.columns, rotation=45, ha="right", fontsize=8)
+            ax.set_yticks(range(n_vars))
+            ax.set_yticklabels(portrait.index, fontsize=8)
+
+            # Annotate cells with nRMSE values
+            for i in range(n_vars):
+                for j in range(n_regions):
+                    val = data[i, j]
+                    if not np.isnan(val):
+                        txt_col = "white" if val > vmax * 0.65 else "black"
+                        ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                                fontsize=7, color=txt_col)
+
+            cbar = fig.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
+            cbar.set_label("nRMSE", fontsize=8)
+            cbar.ax.tick_params(labelsize=7)
+            if vmax < np.nanmax(data):
+                cbar.ax.set_title("(capped at 2.0)", fontsize=6, loc="left")
+
+            ax.set_title("Portrait Plot — Normalised RMSE by Variable × Region",
+                         fontsize=10, fontweight="bold", pad=10)
+            fig.tight_layout()
+
+            rel = save_fig(fig, fig_dir, "error_metrics_portrait")
+            figures.append(rel)
+            blocks.append(
+                f"### Portrait Plot (Variable × Region)\n\n"
+                f"_Normalised RMSE for each variable-region pair. "
+                f"nRMSE > 1.0 (dark red) means prediction error exceeds the typical magnitude "
+                f"of the ground truth for that pair. Cells capped at 2.0 for display._\n\n"
+                f"![Portrait plot]({rel})"
+            )
+
+    # Temporal drift chart — mean nRMSE by year
+    if by_vy is not None and not by_vy.empty and "Year" in by_vy.columns:
+        variables = by_vy["Variable"].unique()
+        fig, ax = plt.subplots(figsize=(8, max(3.5, len(variables) * 0.3)))
+
+        cmap   = plt.get_cmap("tab10")
+        colors = {v: cmap(i % 10) for i, v in enumerate(sorted(variables))}
+
+        for var in sorted(variables):
+            sub = by_vy[by_vy["Variable"] == var].sort_values("Year")
+            if sub["nRMSE"].notna().sum() < 2:
+                continue
+            ax.plot(
+                sub["Year"], sub["nRMSE"],
+                marker="o", markersize=3, linewidth=1.5,
+                color=colors[var],
+                label=var.split("|")[-1],   # short label
+            )
+
+        ax.axhline(1.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.6,
+                   label="nRMSE = 1.0 (error = GT magnitude)")
+        style_ax(ax, title="Temporal Drift — nRMSE by Year",
+                 xlabel="Year", ylabel="nRMSE")
+        ax.legend(fontsize=7, ncol=2, loc="upper left")
+        fig.tight_layout()
+
+        rel = save_fig(fig, fig_dir, "error_metrics_temporal_drift")
+        figures.append(rel)
+        blocks.append(
+            f"### Temporal Drift\n\n"
+            f"_nRMSE by year, aggregated over all regions and scenarios. "
+            f"Rising values indicate autoregressive error accumulation over the projection horizon._\n\n"
+            f"![Temporal drift]({rel})"
+        )
+
+    return "\n\n".join(blocks) + "\n", figures
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1141,10 +1271,11 @@ def main():
     bc_body, bc_figs = section_bounds(run_dir, fig_dir)
     hh_body          = section_hard_historical(run_dir)
     sf_body          = section_soft_future(run_dir)
-    vc_body          = section_verpoort(run_dir)
+    vc_body          = section_sci_checks(run_dir)
     co_body, co_figs = section_correlations(run_dir, fig_dir)
+    em_body, em_figs = section_error_metrics(run_dir, fig_dir)
 
-    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs
+    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs + em_figs
     print(f"  Figures generated: {len(all_figs)}")
 
     report = f"""# {title}
@@ -1219,7 +1350,7 @@ plausibility bounds from the AR6 vetting process (Table 11). Belongs to the
 
 ---
 
-## 7. Verpoort Constraints (IAMC 2025)
+## 7. SCI Vetting Checks
 
 _Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published
 successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data
@@ -1238,6 +1369,18 @@ predictions against AR6 ground truth. A well-calibrated emulator should preserve
 the correlations present in real IAM data. Methodology follows Li et al. (2025) Fig. 4._
 
 {co_body}
+
+---
+
+## 9. Reconstruction Error Metrics
+
+_Applies to reconstruction emulators only (1:1 correspondence between predicted
+and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
+is dimensionless and comparable across variables. The portrait plot shows performance
+across all variable-region pairs simultaneously. The temporal drift chart diagnoses
+autoregressive error accumulation over the projection horizon._
+
+{em_body}
 """
 
     out_path = report_dir / "report.md"

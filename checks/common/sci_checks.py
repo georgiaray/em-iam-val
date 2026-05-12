@@ -9,7 +9,7 @@ published by the Integrated Assessment Modelling Consortium (IAMC).
     https://github.com/PhilippVerpoort/scenario-vetting-criteria
 
 Data (thresholds and reference values) are fetched directly from the public
-GitHub repository and cached locally in checks/verpoort_cache/. To refresh
+GitHub repository and cached locally in checks/sci_cache/. To refresh
 cached data, delete that directory and rerun.
 
 The scenario_vetting_criteria Python package is not used directly due to a
@@ -40,7 +40,7 @@ Status per scenario:
 Belongs to the 'Historical and domain knowledge comparison' validation family.
 
 Usage (standalone):
-    python checks/verpoort_constraints.py \\
+    python checks/sci_checks.py \\
         --predictions adapted-data/shin_01_predictions.csv \\
         --ground_truth adapted-data/shin_01_ground_truth.csv \\
         --run_id shin_01
@@ -63,7 +63,7 @@ from utils import (
 )
 
 REPO_ROOT   = Path(__file__).resolve().parent.parent
-CACHE_DIR   = Path(__file__).parent / "verpoort_cache"
+CACHE_DIR   = Path(__file__).parent / "sci_cache"
 GITHUB_BASE = "https://raw.githubusercontent.com/PhilippVerpoort/scenario-vetting-criteria/main/inst/extdata"
 
 
@@ -438,13 +438,13 @@ def run(
     print(f"  Reference data: {list(ref.keys())}")
 
     results, skipped, unit_warnings = _run_all(predictions, vc, ref, world_region)
-    out_path = make_out_dir(out_dir, run_id, "verpoort_constraints")
+    out_path = make_out_dir(out_dir, run_id, "sci_checks")
 
     if results.empty:
         save_check_outputs(out_path, pd.DataFrame(),
                            skipped=[f"{n}: {m}" for n, m in skipped],
                            unit_warnings=[w for _, w in unit_warnings])
-        return dict(check_name="verpoort_constraints", passed=True,
+        return dict(check_name="sci_checks", passed=True,
                     results=pd.DataFrame(), summary=pd.DataFrame(),
                     unit_warnings=[w for _, w in unit_warnings],
                     skipped=[n for n, _ in skipped])
@@ -470,7 +470,7 @@ def run(
     if ground_truth is not None:
         gt_results, gt_skip, gt_warn = _run_all(ground_truth, vc, ref, world_region)
         if not gt_results.empty:
-            gt_out = make_out_dir(out_dir, run_id, "verpoort_constraints_ground_truth")
+            gt_out = make_out_dir(out_dir, run_id, "sci_checks_ground_truth")
             gt_summary = (gt_results.groupby("constraint_name")["status"]
                           .value_counts().unstack(fill_value=0).reset_index())
             save_check_outputs(gt_out, gt_results, gt_summary,
@@ -484,7 +484,7 @@ def run(
     if skipped:
         print(f"  Skipped: {[n for n, _ in skipped]}")
 
-    return dict(check_name="verpoort_constraints", passed=passed,
+    return dict(check_name="sci_checks", passed=passed,
                 results=results, summary=summary,
                 unit_warnings=[w for _, w in unit_warnings],
                 skipped=[n for n, _ in skipped])

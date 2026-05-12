@@ -44,7 +44,7 @@ _No complete regional groupings in this dataset._
 | ccs_2030 | 95.3% | 4.7% | 91.3% | 8.7% |
 | nuclear_electricity_2030 | 97.8% | 2.2% | 94.1% | 5.9% |
 
-**7. Verpoort Constraints (IAMC 2025)**
+**7. SCI Vetting Checks**
 
 | Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -265,7 +265,7 @@ _Skipped sub-checks (required variables absent): co2_not_negative_2030: ['Emissi
 
 ---
 
-## 7. Verpoort Constraints (IAMC 2025)
+## 7. SCI Vetting Checks
 
 _Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published
 successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data
