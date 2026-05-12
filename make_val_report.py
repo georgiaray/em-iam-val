@@ -1128,6 +1128,26 @@ def section_error_metrics(run_dir: Path, fig_dir: Path) -> tuple:
     blocks  = []
     figures = []
 
+    # Overall aggregate — single row across all variables
+    agg_row = pd.DataFrame([{
+        "Metric": "Mean nRMSE",
+        "Value":  f"{summary['Mean_nRMSE'].mean():.4f}",
+    }, {
+        "Metric": "Mean MAE",
+        "Value":  f"{summary['Mean_MAE'].mean():.4f}",
+    }, {
+        "Metric": "Mean R²",
+        "Value":  f"{summary['Mean_R2'].mean():.4f}",
+    }, {
+        "Metric": "Mean Bias",
+        "Value":  f"{summary['Mean_Bias'].mean():.4f}",
+    }])
+    blocks.append(
+        "### Overall\n\n"
+        "_Aggregated across all variables and regions._\n\n"
+        + md_table(agg_row, fmt={c: "{}" for c in agg_row.columns})
+    )
+
     # Headline summary table
     cols = ["Variable", "Units", "Mean_nRMSE", "Mean_RMSE", "Mean_MAE", "Mean_R2", "Mean_Bias"]
     cols = [c for c in cols if c in summary.columns]

@@ -1,7 +1,7 @@
 # Validation Report: shin_01
 
 **Run ID:** `shin_01`
-**Generated:** 2026-05-12 14:33
+**Generated:** 2026-05-12 14:42
 **Results:** `results/shin_01/`
 
 ---
@@ -332,6 +332,17 @@ and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
 is dimensionless and comparable across variables. The portrait plot shows performance
 across all variable-region pairs simultaneously. The temporal drift chart diagnoses
 autoregressive error accumulation over the projection horizon._
+
+### Overall
+
+_Aggregated across all variables and regions._
+
+| Metric | Value |
+| --- | --- |
+| Mean nRMSE | 523.0088 |
+| Mean MAE | 275.2001 |
+| Mean R² | -506976.5196 |
+| Mean Bias | 7.4334 |
 
 ### Per-variable Summary
 
