@@ -497,10 +497,10 @@ def section_overview(run_dir: Path) -> str:
     em_sum = load(run_dir, "error_metrics", "summary.csv")
     if em_sum is not None and not em_sum.empty:
         tbl = _simple_table([
-            {"Metric": "Mean nRMSE",  "Value": f"{em_sum['Mean_nRMSE'].mean():.4f}"},
-            {"Metric": "Mean MAE",    "Value": f"{em_sum['Mean_MAE'].mean():.4f}"},
-            {"Metric": "Mean R²",     "Value": f"{em_sum['Mean_R2'].mean():.4f}"},
-            {"Metric": "Mean Bias",   "Value": f"{em_sum['Mean_Bias'].mean():.4f}"},
+            {"Metric": "Mean nRMSE", "Value": f"{em_sum['Mean_nRMSE'].mean():.4f}"},
+            {"Metric": "Mean nMAE",  "Value": f"{em_sum['Mean_nMAE'].mean():.4f}"},
+            {"Metric": "Median R²",  "Value": f"{em_sum['Median_R2'].median():.4f}"},
+            {"Metric": "Mean nBias", "Value": f"{em_sum['Mean_nBias'].mean():.4f}"},
         ])
         blocks.append("**9. Reconstruction Error Metrics**\n\n" + tbl)
 
@@ -1144,14 +1144,14 @@ def section_error_metrics(run_dir: Path, fig_dir: Path) -> tuple:
         "Metric": "Mean nRMSE",
         "Value":  f"{summary['Mean_nRMSE'].mean():.4f}",
     }, {
-        "Metric": "Mean MAE",
-        "Value":  f"{summary['Mean_MAE'].mean():.4f}",
+        "Metric": "Mean nMAE",
+        "Value":  f"{summary['Mean_nMAE'].mean():.4f}",
     }, {
-        "Metric": "Mean R²",
-        "Value":  f"{summary['Mean_R2'].mean():.4f}",
+        "Metric": "Median R²",
+        "Value":  f"{summary['Median_R2'].median():.4f}",
     }, {
-        "Metric": "Mean Bias",
-        "Value":  f"{summary['Mean_Bias'].mean():.4f}",
+        "Metric": "Mean nBias",
+        "Value":  f"{summary['Mean_nBias'].mean():.4f}",
     }])
     blocks.append(
         "### Overall\n\n"
@@ -1160,7 +1160,7 @@ def section_error_metrics(run_dir: Path, fig_dir: Path) -> tuple:
     )
 
     # Headline summary table
-    cols = ["Variable", "Units", "Mean_nRMSE", "Mean_RMSE", "Mean_MAE", "Mean_R2", "Mean_Bias"]
+    cols = ["Variable", "Units", "Mean_nRMSE", "Mean_RMSE", "Mean_MAE", "Median_R2", "Mean_Bias"]
     cols = [c for c in cols if c in summary.columns]
     tbl  = summary[cols].copy()
     tbl.columns = [

@@ -1,7 +1,7 @@
 # Validation Report: shin_01
 
 **Run ID:** `shin_01`
-**Generated:** 2026-05-12 14:45
+**Generated:** 2026-05-12 15:05
 **Results:** `results/shin_01/`
 
 ---
@@ -59,10 +59,10 @@ _No complete regional groupings in this dataset._
 
 | Metric | Value |
 | --- | --- |
-| Mean nRMSE | 523.0088 |
-| Mean MAE | 275.2001 |
-| Mean R² | -506976.5196 |
-| Mean Bias | 7.4334 |
+| Mean nRMSE | 0.8532 |
+| Mean nMAE | 0.3357 |
+| Median R² | 0.8636 |
+| Mean nBias | 0.1791 |
 
 ---
 
@@ -348,36 +348,36 @@ _Aggregated across all variables and regions._
 
 | Metric | Value |
 | --- | --- |
-| Mean nRMSE | 523.0088 |
-| Mean MAE | 275.2001 |
-| Mean R² | -506976.5196 |
-| Mean Bias | 7.4334 |
+| Mean nRMSE | 0.8532 |
+| Mean nMAE | 0.3357 |
+| Median R² | 0.8636 |
+| Mean nBias | 0.1791 |
 
 ### Per-variable Summary
 
 _Metrics averaged over all regions. nRMSE = RMSE / mean(|ground truth|) — dimensionless, comparable across variables. Lower is better._
 
-| Variable | Units | nRMSE | RMSE | MAE | R2 | Bias |
+| Variable | Units | nRMSE | RMSE | MAE | Median R2 | Bias |
 | --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Coal | EJ/yr | 8692.6506 | 735.4322 | 275.0868 | -4515187.3978 | -10.7167 |
-| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 660.5368 | 931.0029 | 410.0177 | -3706023.4764 | 77.8554 |
-| Primary Energy\|Nuclear | EJ | 182.7484 | 0.9637 | 0.4325 | 0.6033 | 0.0830 |
-| Secondary Energy\|Electricity\|Hydro | EJ/yr | 168.6258 | 304.1664 | 150.3650 | -1113355.0781 | 0.9712 |
-| Secondary Energy\|Electricity\|Oil | EJ/yr | 115.6841 | 53.7048 | 16.2562 | -122008.8536 | 3.8157 |
-| Secondary Energy\|Electricity\|Biomass | EJ/yr | 80.4899 | 537.4479 | 200.1244 | -118153.0741 | 34.1752 |
-| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 29.1937 | 93.0242 | 31.5789 | -57775.2221 | 7.3822 |
-| Primary Energy\|Coal | EJ | 2.0300 | 2.7643 | 1.2147 | -43.7133 | 0.0205 |
-| Secondary Energy\|Electricity\|Gas | EJ/yr | 1.0675 | 936.2636 | 474.9392 | -8.5900 | -129.6940 |
-| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.6225 | 1806.7993 | 863.6720 | 0.0973 | 16.2055 |
-| Primary Energy\|Wind | EJ | 0.6044 | 1.8232 | 0.8813 | 0.0093 | 0.0463 |
-| Primary Energy\|Solar | EJ | 0.5604 | 2.0602 | 0.9986 | -0.3354 | 0.0842 |
-| Primary Energy\|Gas | EJ | 0.4875 | 2.8792 | 1.6164 | -0.4568 | -0.2067 |
-| Emissions\|CO2 | Mt CO2/yr | 0.4751 | 581.2167 | 304.1740 | 0.3081 | -4.6647 |
-| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.4184 | 1718.4093 | 836.6479 | 0.5380 | 22.8162 |
-| Primary Energy\|Oil | EJ | 0.2877 | 2.3576 | 1.2073 | 0.5268 | -0.0812 |
-| Secondary Energy\|Electricity | EJ/yr | 0.2552 | 3105.8114 | 1595.6261 | 0.5750 | 124.9341 |
-| Emissions\|CH4 | Mt CH4/yr | 0.2266 | 3.2327 | 1.6861 | 0.4968 | 0.0240 |
-| Emissions\|N2O | Mt N2O/yr | 0.2024 | 196.6245 | 62.2776 | -0.8303 | -1.8153 |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 7.6109 | 156.2057 | 43.7380 | 0.6884 | 5.7369 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | 1.2368 | 1193.9774 | 421.7581 | 0.8040 | 76.5209 |
+| Secondary Energy\|Electricity\|Coal | EJ/yr | 1.1132 | 1447.0049 | 559.2855 | 0.6772 | -21.1511 |
+| Secondary Energy\|Electricity\|Oil | EJ/yr | 0.7468 | 125.2663 | 37.2975 | 0.8929 | 5.8378 |
+| Primary Energy\|Coal | EJ | 0.6109 | 5.6937 | 2.4917 | 0.8140 | 0.0342 |
+| Primary Energy\|Nuclear | EJ | 0.6090 | 1.8074 | 0.8239 | 0.8225 | 0.1187 |
+| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 0.5952 | 1752.0127 | 781.1384 | 0.8319 | 114.3918 |
+| Secondary Energy\|Electricity\|Gas | EJ/yr | 0.4473 | 1510.9188 | 740.8672 | 0.8375 | -121.1000 |
+| Secondary Energy\|Electricity\|Hydro | EJ/yr | 0.4451 | 508.9887 | 240.6017 | 0.8484 | 17.8034 |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.3893 | 3423.1856 | 1590.7158 | 0.8790 | -37.6498 |
+| Primary Energy\|Solar | EJ | 0.3483 | 3.5245 | 1.6540 | 0.8972 | -0.0848 |
+| Primary Energy\|Wind | EJ | 0.3467 | 3.4136 | 1.6151 | 0.8961 | 0.0187 |
+| Emissions\|CO2 | Mt CO2/yr | 0.3408 | 1127.4137 | 580.0755 | 0.8675 | 8.7986 |
+| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.3367 | 3049.4596 | 1456.5852 | 0.8934 | -80.6788 |
+| Primary Energy\|Oil | EJ | 0.2445 | 4.6714 | 2.3361 | 0.8884 | -0.0591 |
+| Primary Energy\|Gas | EJ | 0.2428 | 4.8437 | 2.6906 | 0.8636 | 0.0128 |
+| Emissions\|N2O | Mt N2O/yr | 0.2136 | 477.8411 | 129.3062 | 0.8527 | -14.8680 |
+| Secondary Energy\|Electricity | EJ/yr | 0.1717 | 5620.4148 | 2817.3544 | 0.9212 | 35.6031 |
+| Emissions\|CH4 | Mt CH4/yr | 0.1608 | 6.5209 | 3.1433 | 0.8941 | -0.2067 |
 
 ### Portrait Plot (Variable × Region)
 

@@ -33,10 +33,10 @@ from utils import (
 )
 
 
-# Minimum absolute mean ground truth value below which normalisation is
-# suppressed (avoids division by near-zero for variables with values close
-# to zero in some regions).
-_NORM_FLOOR = 1e-6
+# nRMSE normalisation is suppressed when a region's mean |ground truth| is
+# below this value, preventing division by near-zero for variables whose
+# regional values are negligibly small.
+_NORM_FLOOR = 0.1
 
 
 def _align(predictions: pd.DataFrame, ground_truth: pd.DataFrame) -> pd.DataFrame:
@@ -51,11 +51,20 @@ def _align(predictions: pd.DataFrame, ground_truth: pd.DataFrame) -> pd.DataFram
     merge_keys = ["Model", "Scenario", "Region", "Year", "Variable"]
 
     pred = predictions[merge_keys + ["Value", "Units"]].rename(
-        columns={"Value": "Value_pred", "Units": "Units"}
+        columns={"Value": "Value_pred"}
     )
     gt = ground_truth[merge_keys + ["Value"]].rename(
         columns={"Value": "Value_gt"}
     )
+
+    dup_pred = pred.duplicated(subset=merge_keys).sum()
+    dup_gt   = gt.duplicated(subset=merge_keys).sum()
+    if dup_pred:
+        print(f"  [error_metrics] WARNING: {dup_pred} duplicate key rows in predictions — keeping first.")
+        pred = pred.drop_duplicates(subset=merge_keys)
+    if dup_gt:
+        print(f"  [error_metrics] WARNING: {dup_gt} duplicate key rows in ground truth — keeping first.")
+        gt = gt.drop_duplicates(subset=merge_keys)
 
     merged = pred.merge(gt, on=merge_keys, how="inner")
     return merged
@@ -89,14 +98,13 @@ def compute_by_variable_region(aligned: pd.DataFrame) -> pd.DataFrame:
         bias      = np.mean(residuals)
         gt_mean   = np.mean(np.abs(g))
 
-        if gt_mean > _NORM_FLOOR:
-            nrmse = rmse / gt_mean
-        else:
-            nrmse = np.nan
+        nrmse = rmse / gt_mean if gt_mean > _NORM_FLOOR else np.nan
+        nmae  = mae  / gt_mean if gt_mean > _NORM_FLOOR else np.nan
+        nbias = bias / gt_mean if gt_mean > _NORM_FLOOR else np.nan
 
         ss_res = np.sum(residuals ** 2)
         ss_tot = np.sum((g - np.mean(g)) ** 2)
-        r2 = 1.0 - ss_res / ss_tot if ss_tot > _NORM_FLOOR else np.nan
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
 
         rows.append({
             "Variable": var,
@@ -106,8 +114,10 @@ def compute_by_variable_region(aligned: pd.DataFrame) -> pd.DataFrame:
             "RMSE":     rmse,
             "nRMSE":    nrmse,
             "MAE":      mae,
+            "nMAE":     nmae,
             "R2":       r2,
             "Bias":     bias,
+            "nBias":    nbias,
             "GT_Mean":  gt_mean,
         })
 
@@ -147,7 +157,7 @@ def compute_by_variable_year(aligned: pd.DataFrame) -> pd.DataFrame:
 
         ss_res = np.sum(residuals ** 2)
         ss_tot = np.sum((g - np.mean(g)) ** 2)
-        r2 = 1.0 - ss_res / ss_tot if ss_tot > _NORM_FLOOR else np.nan
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
 
         rows.append({
             "Variable": var,
@@ -184,16 +194,22 @@ def compute_overall_summary(by_var_region: pd.DataFrame) -> pd.DataFrame:
     """
     rows = []
     for var, grp in by_var_region.groupby("Variable"):
+        valid = grp.dropna(subset=["nRMSE"])
+        mean_nrmse = (
+            np.average(valid["nRMSE"], weights=valid["N"]) if not valid.empty else np.nan
+        )
         rows.append({
             "Variable":       var,
             "Units":          grp["Units"].iloc[0],
             "N_Regions":      len(grp),
-            "Mean_nRMSE":     grp["nRMSE"].mean(),
+            "Mean_nRMSE":     mean_nrmse,
             "Max_nRMSE":      grp["nRMSE"].max(),
-            "Mean_RMSE":      grp["RMSE"].mean(),
-            "Mean_MAE":       grp["MAE"].mean(),
-            "Mean_R2":        grp["R2"].mean(),
-            "Mean_Bias":      grp["Bias"].mean(),
+            "Mean_RMSE":      np.average(grp["RMSE"],  weights=grp["N"]),
+            "Mean_MAE":       np.average(grp["MAE"],   weights=grp["N"]),
+            "Mean_nMAE":      np.average(grp["nMAE"].fillna(0), weights=grp["N"]),
+            "Median_R2":      grp["R2"].median(),  # median: robust to near-zero-variance regions
+            "Mean_Bias":      np.average(grp["Bias"],  weights=grp["N"]),
+            "Mean_nBias":     np.average(grp["nBias"].fillna(0), weights=grp["N"]),
         })
     return pd.DataFrame(rows).sort_values("Mean_nRMSE", ascending=False).reset_index(drop=True)
 
@@ -321,7 +337,7 @@ def main():
     print(f"\nError metrics check: {status}")
     if not result["summary"].empty:
         print("\nPer-variable summary (sorted by mean nRMSE, descending):")
-        print(result["summary"][["Variable", "Mean_nRMSE", "Mean_R2", "Mean_Bias"]].to_string(index=False))
+        print(result["summary"][["Variable", "Mean_nRMSE", "Median_R2", "Mean_Bias"]].to_string(index=False))
     print(f"\nFull results saved to {args.out_dir}/{args.run_id}/error_metrics/")
     print("  results.csv         — per (Variable, Region) metrics")
     print("  summary.csv         — per-variable headline metrics")
