@@ -1,7 +1,7 @@
 # Validation Report: shin_01
 
 **Run ID:** `shin_01`
-**Generated:** 2026-05-12 14:42
+**Generated:** 2026-05-12 14:45
 **Results:** `results/shin_01/`
 
 ---
@@ -49,11 +49,20 @@ _No complete regional groupings in this dataset._
 | co2_not_negative_2030 | 100.0% | 0.0% | 100.0% | 0.0% |
 | nuclear_electricity_2030 | 0.0% | 100.0% | 0.0% | 100.0% |
 
-**7. Inter-variable Correlations**
+**8. Inter-variable Correlations**
 
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
 | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
+
+**9. Reconstruction Error Metrics**
+
+| Metric | Value |
+| --- | --- |
+| Mean nRMSE | 523.0088 |
+| Mean MAE | 275.2001 |
+| Mean R² | -506976.5196 |
+| Mean Bias | 7.4334 |
 
 ---
 

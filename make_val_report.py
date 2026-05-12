@@ -491,7 +491,18 @@ def section_overview(run_dir: Path) -> str:
              "Predictions": f"{mean_diff:.4f}",
              "Ground Truth": "0.0000 (reference)"},
         ])
-        blocks.append("**7. Inter-variable Correlations**\n\n" + tbl)
+        blocks.append("**8. Inter-variable Correlations**\n\n" + tbl)
+
+    # 9. Reconstruction Error Metrics
+    em_sum = load(run_dir, "error_metrics", "summary.csv")
+    if em_sum is not None and not em_sum.empty:
+        tbl = _simple_table([
+            {"Metric": "Mean nRMSE",  "Value": f"{em_sum['Mean_nRMSE'].mean():.4f}"},
+            {"Metric": "Mean MAE",    "Value": f"{em_sum['Mean_MAE'].mean():.4f}"},
+            {"Metric": "Mean R²",     "Value": f"{em_sum['Mean_R2'].mean():.4f}"},
+            {"Metric": "Mean Bias",   "Value": f"{em_sum['Mean_Bias'].mean():.4f}"},
+        ])
+        blocks.append("**9. Reconstruction Error Metrics**\n\n" + tbl)
 
     return "\n\n".join(blocks) if blocks else "_No check results found._"
 
