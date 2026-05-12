@@ -44,6 +44,7 @@ COMMON_CHECKS = [
     ("common.soft_future_constraints",      "Soft future constraints (WGIII/AR6)"),
     ("common.sci_checks",         "SCI vetting checks"),
     ("common.inter_variable_correlation",   "Inter-variable correlation"),
+    ("common.variance_fidelity",            "Variance fidelity"),
 ]
 
 GENERATION_CHECKS: list = [

@@ -1,7 +1,7 @@
 # Validation Report: shin_01
 
 **Run ID:** `shin_01`
-**Generated:** 2026-05-12 15:05
+**Generated:** 2026-05-12 15:30
 **Results:** `results/shin_01/`
 
 ---
@@ -55,7 +55,14 @@ _No complete regional groupings in this dataset._
 | --- | --- | --- |
 | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
 
-**9. Reconstruction Error Metrics**
+**9. Variance Fidelity**
+
+| Metric | Value |
+| --- | --- |
+| Median variance ratio | 0.9518 |
+| Pass rate (variable-regions) | 80.9% |
+
+**10. Reconstruction Error Metrics**
 
 | Metric | Value |
 | --- | --- |
@@ -334,7 +341,60 @@ _Average absolute difference between predictions and ground truth correlation ma
 
 ---
 
-## 9. Reconstruction Error Metrics
+## 9. Variance Fidelity
+
+_Checks whether the emulator reproduces the marginal variance of each output
+variable. Inter-variable correlation checks preserve the shape of variable
+relationships but normalise out variance — this check catches whether the
+emulator is systematically over- or under-dispersed. Variance ratio =
+Var(predictions) / Var(ground truth); a well-calibrated emulator should be
+close to 1.0. Applicable to both reconstruction and generative runs._
+
+**Variable-region pairs evaluated:** 997  
+**Skipped** (near-constant GT): 29  
+**PASS:** 805 &nbsp; **WARN:** 96 &nbsp; **FAIL:** 96  
+_PASS = variance ratio within 0.5–2.0×; WARN = 0.25–0.5× or 2.0–4.0×; FAIL = outside 4×._
+
+### Per-variable Summary
+
+_Median variance ratio and CV ratio across regions. Values below 1.0 indicate the emulator is under-dispersed; above 1.0 it is over-dispersed._
+
+| Variable | Var Ratio | CV Ratio | Pass Rate | Warn Rate | Fail Rate |
+| --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Gas | 0.8247 | 0.9297 | 0.8704 | 0.0556 | 0.0741 |
+| Primary Energy\|Gas | 0.8521 | 0.9350 | 0.8148 | 0.1111 | 0.0741 |
+| Primary Energy\|Coal | 0.8821 | 0.9185 | 0.6863 | 0.1569 | 0.1569 |
+| Secondary Energy\|Electricity\|Coal | 0.8990 | 0.8724 | 0.7170 | 0.0943 | 0.1887 |
+| Emissions\|N2O | 0.9101 | 0.9480 | 0.8148 | 0.0926 | 0.0926 |
+| Primary Energy\|Oil | 0.9116 | 0.9359 | 0.8519 | 0.0741 | 0.0741 |
+| Emissions\|CH4 | 0.9186 | 0.9499 | 0.8519 | 0.0926 | 0.0556 |
+| Emissions\|CO2 | 0.9412 | 0.9904 | 0.8704 | 0.0741 | 0.0556 |
+| Secondary Energy\|Electricity\|Wind | 0.9447 | 0.9486 | 0.8148 | 0.1481 | 0.0370 |
+| Secondary Energy\|Electricity\|Solar | 0.9518 | 0.9621 | 0.8704 | 0.0741 | 0.0556 |
+| Secondary Energy\|Electricity\|Biomass | 0.9596 | 0.9391 | 0.7778 | 0.0926 | 0.1296 |
+| Primary Energy\|Wind | 0.9717 | 0.9555 | 0.8333 | 0.1296 | 0.0370 |
+| Secondary Energy\|Electricity | 0.9894 | 0.9833 | 0.8889 | 0.0741 | 0.0370 |
+| Primary Energy\|Solar | 0.9918 | 0.9707 | 0.7593 | 0.1481 | 0.0926 |
+| Secondary Energy\|Electricity\|Oil | 0.9950 | 0.9164 | 0.8333 | 0.0556 | 0.1111 |
+| Secondary Energy\|Electricity\|Nuclear | 0.9968 | 0.9350 | 0.8810 | 0.0714 | 0.0476 |
+| Primary Energy\|Nuclear | 1.0156 | 0.9397 | 0.9024 | 0.0488 | 0.0488 |
+| Secondary Energy\|Electricity\|Hydro | 1.0166 | 1.0075 | 0.7037 | 0.0741 | 0.2222 |
+| Secondary Energy\|Electricity\|Geothermal | 1.0822 | 0.9672 | 0.6296 | 0.1481 | 0.2222 |
+
+### Variance Ratio Distribution
+
+![Variance ratio distribution](figures/variance_fidelity_distribution.png)
+
+### Median Variance Ratio by Variable
+
+_Green = PASS, orange = WARN, red = FAIL._
+
+![Variance ratio by variable](figures/variance_fidelity_by_variable.png)
+
+
+---
+
+## 10. Reconstruction Error Metrics
 
 _Applies to reconstruction emulators only (1:1 correspondence between predicted
 and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
@@ -355,29 +415,29 @@ _Aggregated across all variables and regions._
 
 ### Per-variable Summary
 
-_Metrics averaged over all regions. nRMSE = RMSE / mean(|ground truth|) — dimensionless, comparable across variables. Lower is better._
+_All metrics normalised by mean(|ground truth|) per variable-region pair — dimensionless and comparable across variables. nRMSE and nMAE: lower is better. nBias: positive = systematic overprediction._
 
-| Variable | Units | nRMSE | RMSE | MAE | Median R2 | Bias |
-| --- | --- | --- | --- | --- | --- | --- |
-| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 7.6109 | 156.2057 | 43.7380 | 0.6884 | 5.7369 |
-| Secondary Energy\|Electricity\|Biomass | EJ/yr | 1.2368 | 1193.9774 | 421.7581 | 0.8040 | 76.5209 |
-| Secondary Energy\|Electricity\|Coal | EJ/yr | 1.1132 | 1447.0049 | 559.2855 | 0.6772 | -21.1511 |
-| Secondary Energy\|Electricity\|Oil | EJ/yr | 0.7468 | 125.2663 | 37.2975 | 0.8929 | 5.8378 |
-| Primary Energy\|Coal | EJ | 0.6109 | 5.6937 | 2.4917 | 0.8140 | 0.0342 |
-| Primary Energy\|Nuclear | EJ | 0.6090 | 1.8074 | 0.8239 | 0.8225 | 0.1187 |
-| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 0.5952 | 1752.0127 | 781.1384 | 0.8319 | 114.3918 |
-| Secondary Energy\|Electricity\|Gas | EJ/yr | 0.4473 | 1510.9188 | 740.8672 | 0.8375 | -121.1000 |
-| Secondary Energy\|Electricity\|Hydro | EJ/yr | 0.4451 | 508.9887 | 240.6017 | 0.8484 | 17.8034 |
-| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.3893 | 3423.1856 | 1590.7158 | 0.8790 | -37.6498 |
-| Primary Energy\|Solar | EJ | 0.3483 | 3.5245 | 1.6540 | 0.8972 | -0.0848 |
-| Primary Energy\|Wind | EJ | 0.3467 | 3.4136 | 1.6151 | 0.8961 | 0.0187 |
-| Emissions\|CO2 | Mt CO2/yr | 0.3408 | 1127.4137 | 580.0755 | 0.8675 | 8.7986 |
-| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.3367 | 3049.4596 | 1456.5852 | 0.8934 | -80.6788 |
-| Primary Energy\|Oil | EJ | 0.2445 | 4.6714 | 2.3361 | 0.8884 | -0.0591 |
-| Primary Energy\|Gas | EJ | 0.2428 | 4.8437 | 2.6906 | 0.8636 | 0.0128 |
-| Emissions\|N2O | Mt N2O/yr | 0.2136 | 477.8411 | 129.3062 | 0.8527 | -14.8680 |
-| Secondary Energy\|Electricity | EJ/yr | 0.1717 | 5620.4148 | 2817.3544 | 0.9212 | 35.6031 |
-| Emissions\|CH4 | Mt CH4/yr | 0.1608 | 6.5209 | 3.1433 | 0.8941 | -0.2067 |
+| Variable | Units | nRMSE | nMAE | R2 | nBias |
+| --- | --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Geothermal | EJ/yr | 7.6109 | 2.6854 | 0.6884 | 2.5357 |
+| Secondary Energy\|Electricity\|Biomass | EJ/yr | 1.2368 | 0.4794 | 0.8040 | 0.2041 |
+| Secondary Energy\|Electricity\|Coal | EJ/yr | 1.1132 | 0.3785 | 0.6772 | 0.0852 |
+| Secondary Energy\|Electricity\|Oil | EJ/yr | 0.7468 | 0.2591 | 0.8929 | 0.0948 |
+| Primary Energy\|Coal | EJ | 0.6109 | 0.2399 | 0.8140 | 0.0040 |
+| Primary Energy\|Nuclear | EJ | 0.6090 | 0.2606 | 0.8225 | 0.0836 |
+| Secondary Energy\|Electricity\|Nuclear | EJ/yr | 0.5952 | 0.2511 | 0.8319 | 0.0765 |
+| Secondary Energy\|Electricity\|Gas | EJ/yr | 0.4473 | 0.2290 | 0.8375 | 0.0075 |
+| Secondary Energy\|Electricity\|Hydro | EJ/yr | 0.4451 | 0.2442 | 0.8484 | 0.1651 |
+| Secondary Energy\|Electricity\|Wind | EJ/yr | 0.3893 | 0.1873 | 0.8790 | 0.0320 |
+| Primary Energy\|Solar | EJ | 0.3483 | 0.1654 | 0.8972 | 0.0414 |
+| Primary Energy\|Wind | EJ | 0.3467 | 0.1591 | 0.8961 | 0.0147 |
+| Emissions\|CO2 | Mt CO2/yr | 0.3408 | 0.1836 | 0.8675 | 0.0147 |
+| Secondary Energy\|Electricity\|Solar | EJ/yr | 0.3367 | 0.1589 | 0.8934 | 0.0280 |
+| Primary Energy\|Oil | EJ | 0.2445 | 0.1175 | 0.8884 | -0.0103 |
+| Primary Energy\|Gas | EJ | 0.2428 | 0.1309 | 0.8636 | -0.0016 |
+| Emissions\|N2O | Mt N2O/yr | 0.2136 | 0.0771 | 0.8527 | 0.0055 |
+| Secondary Energy\|Electricity | EJ/yr | 0.1717 | 0.0897 | 0.9212 | 0.0149 |
+| Emissions\|CH4 | Mt CH4/yr | 0.1608 | 0.0825 | 0.8941 | 0.0071 |
 
 ### Portrait Plot (Variable × Region)
 

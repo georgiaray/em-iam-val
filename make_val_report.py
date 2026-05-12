@@ -493,7 +493,20 @@ def section_overview(run_dir: Path) -> str:
         ])
         blocks.append("**8. Inter-variable Correlations**\n\n" + tbl)
 
-    # 9. Reconstruction Error Metrics
+    # 9. Variance Fidelity
+    vf_sum = load(run_dir, "variance_fidelity", "summary.csv")
+    if vf_sum is not None and not vf_sum.empty:
+        active = vf_sum.dropna(subset=["Median_Var_Ratio"])
+        if not active.empty:
+            overall_pass = (active["Pass_Rate"] * active["N_Regions"]).sum() / active["N_Regions"].sum()
+            median_vr    = active["Median_Var_Ratio"].median()
+            tbl = _simple_table([
+                {"Metric": "Median variance ratio", "Value": f"{median_vr:.4f}"},
+                {"Metric": "Pass rate (variable-regions)", "Value": f"{overall_pass:.1%}"},
+            ])
+            blocks.append("**9. Variance Fidelity**\n\n" + tbl)
+
+    # 10. Reconstruction Error Metrics
     em_sum = load(run_dir, "error_metrics", "summary.csv")
     if em_sum is not None and not em_sum.empty:
         tbl = _simple_table([
@@ -502,7 +515,7 @@ def section_overview(run_dir: Path) -> str:
             {"Metric": "Median R²",  "Value": f"{em_sum['Median_R2'].median():.4f}"},
             {"Metric": "Mean nBias", "Value": f"{em_sum['Mean_nBias'].mean():.4f}"},
         ])
-        blocks.append("**9. Reconstruction Error Metrics**\n\n" + tbl)
+        blocks.append("**10. Reconstruction Error Metrics**\n\n" + tbl)
 
     return "\n\n".join(blocks) if blocks else "_No check results found._"
 
@@ -1116,6 +1129,100 @@ def section_correlations(run_dir: Path, fig_dir: Path) -> tuple:
 
 
 # ---------------------------------------------------------------------------
+# Variance fidelity section
+# ---------------------------------------------------------------------------
+
+_PASS_LO, _PASS_HI = 0.5, 2.0
+_WARN_LO, _WARN_HI = 0.25, 4.0
+
+
+def section_variance_fidelity(run_dir: Path, fig_dir: Path) -> tuple:
+    results = load(run_dir, "variance_fidelity", "results.csv")
+    summary = load(run_dir, "variance_fidelity", "summary.csv")
+
+    if results is None:
+        return (
+            "_Variance fidelity results not found. Run `validate.py` first._\n",
+            [],
+        )
+
+    blocks  = []
+    figures = []
+
+    active = results[results["Status"] != "SKIP"]
+    n_skip = (results["Status"] == "SKIP").sum()
+    total  = len(active)
+
+    if total == 0:
+        return "_All variable-region pairs skipped (near-constant ground truth)._\n", []
+
+    n_pass = (active["Status"] == "PASS").sum()
+    n_warn = (active["Status"] == "WARN").sum()
+    n_fail = (active["Status"] == "FAIL").sum()
+
+    blocks.append(
+        f"**Variable-region pairs evaluated:** {total:,}  \n"
+        f"**Skipped** (near-constant GT): {int(n_skip):,}  \n"
+        f"**PASS:** {int(n_pass):,} &nbsp; **WARN:** {int(n_warn):,} &nbsp; **FAIL:** {int(n_fail):,}  \n"
+        f"_PASS = variance ratio within 0.5–2.0×; WARN = 0.25–0.5× or 2.0–4.0×; FAIL = outside 4×._"
+    )
+
+    # Per-variable summary table
+    if summary is not None and not summary.empty:
+        cols = ["Variable", "Median_Var_Ratio", "Median_CV_Ratio", "Pass_Rate", "Warn_Rate", "Fail_Rate"]
+        cols = [c for c in cols if c in summary.columns]
+        tbl  = summary[cols].copy()
+        tbl.columns = [c.replace("_", " ").replace("Median ", "") for c in cols]
+        blocks.append("### Per-variable Summary\n\n"
+                      "_Median variance ratio and CV ratio across regions. "
+                      "Values below 1.0 indicate the emulator is under-dispersed; "
+                      "above 1.0 it is over-dispersed._\n\n"
+                      + md_table(tbl))
+
+    # Figure: variance ratio distribution
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+    var_ratios = active["Var_Ratio"].dropna().clip(upper=8.0)
+    ax.hist(var_ratios, bins=50, color=C_PRED, alpha=0.8)
+    ax.axvline(1.0,          color="black", linewidth=1.2, linestyle="-",  label="Perfect fidelity (1.0)")
+    ax.axvline(_PASS_LO,     color="green", linewidth=1.0, linestyle="--", label=f"PASS bounds ({_PASS_LO}–{_PASS_HI}×)")
+    ax.axvline(_PASS_HI,     color="green", linewidth=1.0, linestyle="--")
+    ax.axvline(_WARN_LO,     color="orange",linewidth=0.8, linestyle=":",  label=f"WARN bounds ({_WARN_LO}–{_WARN_HI}×)")
+    ax.axvline(_WARN_HI,     color="orange",linewidth=0.8, linestyle=":")
+    ax.legend(fontsize=7)
+    style_ax(ax, title="Variance Ratio Distribution (capped at 8×)",
+             xlabel="Var(predictions) / Var(ground truth)", ylabel="Count")
+    fig.tight_layout()
+    rel = save_fig(fig, fig_dir, "variance_fidelity_distribution")
+    figures.append(rel)
+    blocks.append(f"### Variance Ratio Distribution\n\n![Variance ratio distribution]({rel})")
+
+    # Figure: median variance ratio per variable
+    if summary is not None and not summary.empty:
+        s = summary.dropna(subset=["Median_Var_Ratio"]).sort_values("Median_Var_Ratio")
+        fig, ax = plt.subplots(figsize=(7, max(3, len(s) * 0.5)))
+        colours = [
+            "green" if _PASS_LO <= r <= _PASS_HI
+            else "orange" if _WARN_LO <= r <= _WARN_HI
+            else "red"
+            for r in s["Median_Var_Ratio"]
+        ]
+        ax.barh(s["Variable"], s["Median_Var_Ratio"], color=colours, alpha=0.8)
+        ax.axvline(1.0,      color="black", linewidth=1.2, linestyle="-")
+        ax.axvline(_PASS_LO, color="green", linewidth=0.8, linestyle="--")
+        ax.axvline(_PASS_HI, color="green", linewidth=0.8, linestyle="--")
+        style_ax(ax, title="Median Variance Ratio by Variable",
+                 xlabel="Var(predictions) / Var(ground truth)")
+        fig.tight_layout()
+        rel = save_fig(fig, fig_dir, "variance_fidelity_by_variable")
+        figures.append(rel)
+        blocks.append(f"### Median Variance Ratio by Variable\n\n"
+                      f"_Green = PASS, orange = WARN, red = FAIL._\n\n"
+                      f"![Variance ratio by variable]({rel})")
+
+    return "\n\n".join(blocks) + "\n", figures
+
+
+# ---------------------------------------------------------------------------
 # Error metrics section  (reconstruction only)
 # ---------------------------------------------------------------------------
 
@@ -1160,16 +1267,17 @@ def section_error_metrics(run_dir: Path, fig_dir: Path) -> tuple:
     )
 
     # Headline summary table
-    cols = ["Variable", "Units", "Mean_nRMSE", "Mean_RMSE", "Mean_MAE", "Median_R2", "Mean_Bias"]
+    cols = ["Variable", "Units", "Mean_nRMSE", "Mean_nMAE", "Median_R2", "Mean_nBias"]
     cols = [c for c in cols if c in summary.columns]
     tbl  = summary[cols].copy()
     tbl.columns = [
-        c.replace("Mean_", "").replace("_", " ") for c in cols
+        c.replace("Mean_", "").replace("Median_", "").replace("_", " ") for c in cols
     ]
     blocks.append(
         "### Per-variable Summary\n\n"
-        "_Metrics averaged over all regions. nRMSE = RMSE / mean(|ground truth|) — "
-        "dimensionless, comparable across variables. Lower is better._\n\n"
+        "_All metrics normalised by mean(|ground truth|) per variable-region pair — "
+        "dimensionless and comparable across variables. nRMSE and nMAE: lower is better. "
+        "nBias: positive = systematic overprediction._\n\n"
         + md_table(tbl)
     )
 
@@ -1304,9 +1412,10 @@ def main():
     sf_body          = section_soft_future(run_dir)
     vc_body          = section_sci_checks(run_dir)
     co_body, co_figs = section_correlations(run_dir, fig_dir)
+    vf_body, vf_figs = section_variance_fidelity(run_dir, fig_dir)
     em_body, em_figs = section_error_metrics(run_dir, fig_dir)
 
-    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs + em_figs
+    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs + vf_figs + em_figs
     print(f"  Figures generated: {len(all_figs)}")
 
     report = f"""# {title}
@@ -1403,7 +1512,20 @@ the correlations present in real IAM data. Methodology follows Li et al. (2025) 
 
 ---
 
-## 9. Reconstruction Error Metrics
+## 9. Variance Fidelity
+
+_Checks whether the emulator reproduces the marginal variance of each output
+variable. Inter-variable correlation checks preserve the shape of variable
+relationships but normalise out variance — this check catches whether the
+emulator is systematically over- or under-dispersed. Variance ratio =
+Var(predictions) / Var(ground truth); a well-calibrated emulator should be
+close to 1.0. Applicable to both reconstruction and generative runs._
+
+{vf_body}
+
+---
+
+## 10. Reconstruction Error Metrics
 
 _Applies to reconstruction emulators only (1:1 correspondence between predicted
 and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
