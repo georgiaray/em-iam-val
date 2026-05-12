@@ -1,7 +1,7 @@
 # Validation Report: li_vae_01
 
 **Run ID:** `li_vae_01`
-**Generated:** 2026-05-12 15:31
+**Generated:** 2026-05-12 15:34
 **Results:** `results/li_vae_01/`
 
 ---
@@ -356,7 +356,7 @@ _Median variance ratio and CV ratio across regions. Values below 1.0 indicate th
 
 ### Median Variance Ratio by Variable
 
-_Green = PASS, orange = WARN, red = FAIL._
+_Log scale — green = PASS, orange = WARN, red = FAIL. Bars left of centre = under-dispersed; right = over-dispersed._
 
 ![Variance ratio by variable](figures/variance_fidelity_by_variable.png)
 

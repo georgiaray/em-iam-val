@@ -1179,44 +1179,55 @@ def section_variance_fidelity(run_dir: Path, fig_dir: Path) -> tuple:
                       "above 1.0 it is over-dispersed._\n\n"
                       + md_table(tbl))
 
-    # Figure: variance ratio distribution
+    # Figure: variance ratio distribution (log scale)
     fig, ax = plt.subplots(figsize=(7, 3.5))
-    var_ratios = active["Var_Ratio"].dropna().clip(upper=8.0)
-    ax.hist(var_ratios, bins=50, color=C_PRED, alpha=0.8)
-    ax.axvline(1.0,          color="black", linewidth=1.2, linestyle="-",  label="Perfect fidelity (1.0)")
-    ax.axvline(_PASS_LO,     color="green", linewidth=1.0, linestyle="--", label=f"PASS bounds ({_PASS_LO}–{_PASS_HI}×)")
-    ax.axvline(_PASS_HI,     color="green", linewidth=1.0, linestyle="--")
-    ax.axvline(_WARN_LO,     color="orange",linewidth=0.8, linestyle=":",  label=f"WARN bounds ({_WARN_LO}–{_WARN_HI}×)")
-    ax.axvline(_WARN_HI,     color="orange",linewidth=0.8, linestyle=":")
+    log_ratios = np.log10(active["Var_Ratio"].dropna().replace(0, np.nan).dropna())
+    ax.hist(log_ratios, bins=50, color=C_PRED, alpha=0.8)
+    for val, col, lw, ls, lbl in [
+        (0,                       "black",  1.2, "-",  "Perfect fidelity (1.0)"),
+        (np.log10(_PASS_LO),      "green",  1.0, "--", f"PASS bounds ({_PASS_LO}–{_PASS_HI}×)"),
+        (np.log10(_PASS_HI),      "green",  1.0, "--", None),
+        (np.log10(_WARN_LO),      "orange", 0.8, ":",  f"WARN bounds ({_WARN_LO}–{_WARN_HI}×)"),
+        (np.log10(_WARN_HI),      "orange", 0.8, ":",  None),
+    ]:
+        ax.axvline(val, color=col, linewidth=lw, linestyle=ls,
+                   label=lbl if lbl else "_nolegend_")
+    ax.set_xticks([-2, -1, 0, 1, 2, 3])
+    ax.set_xticklabels(["0.01×", "0.1×", "1×", "10×", "100×", "1000×"])
     ax.legend(fontsize=7)
-    style_ax(ax, title="Variance Ratio Distribution (capped at 8×)",
+    style_ax(ax, title="Variance Ratio Distribution (log scale)",
              xlabel="Var(predictions) / Var(ground truth)", ylabel="Count")
     fig.tight_layout()
     rel = save_fig(fig, fig_dir, "variance_fidelity_distribution")
     figures.append(rel)
     blocks.append(f"### Variance Ratio Distribution\n\n![Variance ratio distribution]({rel})")
 
-    # Figure: median variance ratio per variable
+    # Figure: median variance ratio per variable (log scale)
     if summary is not None and not summary.empty:
         s = summary.dropna(subset=["Median_Var_Ratio"]).sort_values("Median_Var_Ratio")
-        fig, ax = plt.subplots(figsize=(7, max(3, len(s) * 0.5)))
+        log_vals = np.log10(s["Median_Var_Ratio"].replace(0, np.nan))
         colours = [
             "green" if _PASS_LO <= r <= _PASS_HI
             else "orange" if _WARN_LO <= r <= _WARN_HI
             else "red"
             for r in s["Median_Var_Ratio"]
         ]
-        ax.barh(s["Variable"], s["Median_Var_Ratio"], color=colours, alpha=0.8)
-        ax.axvline(1.0,      color="black", linewidth=1.2, linestyle="-")
-        ax.axvline(_PASS_LO, color="green", linewidth=0.8, linestyle="--")
-        ax.axvline(_PASS_HI, color="green", linewidth=0.8, linestyle="--")
-        style_ax(ax, title="Median Variance Ratio by Variable",
+        fig, ax = plt.subplots(figsize=(7, max(3, len(s) * 0.5)))
+        ax.barh(s["Variable"], log_vals, color=colours, alpha=0.8)
+        ax.axvline(0,                  color="black",  linewidth=1.2, linestyle="-")
+        ax.axvline(np.log10(_PASS_LO), color="green",  linewidth=0.8, linestyle="--")
+        ax.axvline(np.log10(_PASS_HI), color="green",  linewidth=0.8, linestyle="--")
+        ticks = [-2, -1, 0, 1, 2, 3]
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(["0.01×", "0.1×", "1×", "10×", "100×", "1000×"])
+        style_ax(ax, title="Median Variance Ratio by Variable (log scale)",
                  xlabel="Var(predictions) / Var(ground truth)")
         fig.tight_layout()
         rel = save_fig(fig, fig_dir, "variance_fidelity_by_variable")
         figures.append(rel)
         blocks.append(f"### Median Variance Ratio by Variable\n\n"
-                      f"_Green = PASS, orange = WARN, red = FAIL._\n\n"
+                      f"_Log scale — green = PASS, orange = WARN, red = FAIL. "
+                      f"Bars left of centre = under-dispersed; right = over-dispersed._\n\n"
                       f"![Variance ratio by variable]({rel})")
 
     return "\n\n".join(blocks) + "\n", figures
