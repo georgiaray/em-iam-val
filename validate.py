@@ -45,6 +45,7 @@ COMMON_CHECKS = [
     ("common.sci_checks",         "SCI vetting checks"),
     ("common.inter_variable_correlation",   "Inter-variable correlation"),
     ("common.variance_fidelity",            "Variance fidelity"),
+    ("common.ks_test",                      "KS distributional test (Bonferroni-corrected)"),
 ]
 
 GENERATION_CHECKS: list = [
@@ -52,7 +53,7 @@ GENERATION_CHECKS: list = [
 ]
 
 RECONSTRUCTION_CHECKS: list = [
-    ("reconstruction.error_metrics", "Per-scenario error metrics (nRMSE, RMSE, MAE, R², bias)"),
+    ("reconstruction.error_metrics", "Per-scenario error metrics (nRMSE, MAE, R², bias)"),
 ]
 
 
@@ -273,12 +274,12 @@ def main():
 
     # Build check kwargs
     check_kwargs = {
-        "percentile": args.percentile,
-        "threshold": args.threshold,
-        "abs_floor": args.abs_floor,
+        "percentile":   args.percentile,
+        "threshold":    args.threshold,
+        "abs_floor":    args.abs_floor,
         "world_region": args.world_region,
-        "pass_mode": args.pass_mode,
-        "grouping": args.grouping,
+        "pass_mode":    args.pass_mode,
+        "grouping":     args.grouping,
     }
 
     result = run_validation(

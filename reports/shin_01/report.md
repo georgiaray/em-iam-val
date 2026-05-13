@@ -1,7 +1,7 @@
 # Validation Report: shin_01
 
 **Run ID:** `shin_01`
-**Generated:** 2026-05-12 15:36
+**Generated:** 2026-05-13 10:23
 **Results:** `results/shin_01/`
 
 ---
@@ -55,14 +55,21 @@ _No complete regional groupings in this dataset._
 | --- | --- | --- |
 | Mean \|Δr²\| vs ground truth | 0.0277 | 0.0000 (reference) |
 
-**9. Variance Fidelity**
+**9. KS Distributional Test**
+
+| Metric | Value |
+| --- | --- |
+| Mean D statistic | 0.0605 |
+| Variables failing (corrected) | 13 / 19 |
+
+**10. Variance Fidelity**
 
 | Metric | Value |
 | --- | --- |
 | Median variance ratio | 0.9518 |
 | Pass rate (variable-regions) | 80.9% |
 
-**10. Reconstruction Error Metrics**
+**11. Reconstruction Error Metrics**
 
 | Metric | Value |
 | --- | --- |
@@ -341,7 +348,56 @@ _Average absolute difference between predictions and ground truth correlation ma
 
 ---
 
-## 9. Variance Fidelity
+## 9. KS Distributional Test
+
+_Two-sample Kolmogorov-Smirnov test comparing the full distribution of emulator
+outputs against IAM ground truth per variable. The D statistic is the maximum
+absolute gap between the two empirical CDFs — it captures distributional differences
+in shape, skewness, and modality that mean- or variance-level checks miss. p-values
+are Bonferroni-corrected across all variables to control the familywise error rate._
+
+**Variables tested:** 19  
+**Bonferroni-corrected α:** 0.002632  
+**PASS:** 6 &nbsp; **FAIL:** 13  
+**Mean D statistic:** 0.0605  
+_D < 0.1 = negligible, 0.1–0.3 = small, ≥ 0.3 = large effect._
+
+### Per-variable Results
+
+_Sorted by D statistic descending. p-values are Bonferroni-corrected._
+
+| Variable | D statistic | p (corrected) | Effect size | Status |
+| --- | --- | --- | --- | --- |
+| Secondary Energy\|Electricity\|Oil | 0.3195 | 0.0000 | large | FAIL |
+| Secondary Energy\|Electricity\|Coal | 0.1913 | 0.0000 | small | FAIL |
+| Secondary Energy\|Electricity\|Geothermal | 0.0924 | 0.0000 | negligible | FAIL |
+| Secondary Energy\|Electricity\|Gas | 0.0787 | 0.0000 | negligible | FAIL |
+| Secondary Energy\|Electricity\|Biomass | 0.0768 | 0.0000 | negligible | FAIL |
+| Primary Energy\|Nuclear | 0.0762 | 0.0000 | negligible | FAIL |
+| Secondary Energy\|Electricity\|Nuclear | 0.0732 | 0.0000 | negligible | FAIL |
+| Primary Energy\|Coal | 0.0561 | 0.0000 | negligible | FAIL |
+| Primary Energy\|Solar | 0.0266 | 0.0000 | negligible | FAIL |
+| Secondary Energy\|Electricity\|Solar | 0.0250 | 0.0000 | negligible | FAIL |
+| Primary Energy\|Oil | 0.0197 | 0.0033 | negligible | FAIL |
+| Primary Energy\|Wind | 0.0196 | 0.0035 | negligible | FAIL |
+| Secondary Energy\|Electricity\|Wind | 0.0194 | 0.0044 | negligible | FAIL |
+| Emissions\|N2O | 0.0156 | 0.1096 | negligible | PASS |
+| Primary Energy\|Gas | 0.0153 | 0.1361 | negligible | PASS |
+| Secondary Energy\|Electricity\|Hydro | 0.0130 | 0.6288 | negligible | PASS |
+| Emissions\|CH4 | 0.0122 | 1.0000 | negligible | PASS |
+| Secondary Energy\|Electricity | 0.0102 | 1.0000 | negligible | PASS |
+| Emissions\|CO2 | 0.0078 | 1.0000 | negligible | PASS |
+
+### D Statistic by Variable
+
+_Green = PASS, red = FAIL (Bonferroni-corrected). D measures the maximum gap between the emulator and IAM CDFs — larger values indicate greater distributional divergence._
+
+![KS statistic by variable](figures/ks_test_by_variable.png)
+
+
+---
+
+## 10. Variance Fidelity
 
 _Checks whether the emulator reproduces the marginal variance of each output
 variable. Inter-variable correlation checks preserve the shape of variable
@@ -394,7 +450,7 @@ _Log scale — green = PASS, orange = WARN, red = FAIL. Bars left of centre = un
 
 ---
 
-## 10. Reconstruction Error Metrics
+## 11. Reconstruction Error Metrics
 
 _Applies to reconstruction emulators only (1:1 correspondence between predicted
 and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)

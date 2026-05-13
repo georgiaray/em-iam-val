@@ -493,7 +493,19 @@ def section_overview(run_dir: Path) -> str:
         ])
         blocks.append("**8. Inter-variable Correlations**\n\n" + tbl)
 
-    # 9. Variance Fidelity
+    # 9. KS Test
+    ks_sum = load(run_dir, "ks_test", "summary.csv")
+    if ks_sum is not None and not ks_sum.empty:
+        n_fail  = (ks_sum["Status"] == "FAIL").sum()
+        n_total = len(ks_sum)
+        mean_d  = ks_sum["KS_stat"].mean()
+        tbl = _simple_table([
+            {"Metric": "Mean D statistic",              "Value": f"{mean_d:.4f}"},
+            {"Metric": "Variables failing (corrected)", "Value": f"{int(n_fail)} / {n_total}"},
+        ])
+        blocks.append("**9. KS Distributional Test**\n\n" + tbl)
+
+    # 10. Variance Fidelity
     vf_sum = load(run_dir, "variance_fidelity", "summary.csv")
     if vf_sum is not None and not vf_sum.empty:
         active = vf_sum.dropna(subset=["Median_Var_Ratio"])
@@ -504,9 +516,9 @@ def section_overview(run_dir: Path) -> str:
                 {"Metric": "Median variance ratio", "Value": f"{median_vr:.4f}"},
                 {"Metric": "Pass rate (variable-regions)", "Value": f"{overall_pass:.1%}"},
             ])
-            blocks.append("**9. Variance Fidelity**\n\n" + tbl)
+            blocks.append("**10. Variance Fidelity**\n\n" + tbl)
 
-    # 10. Reconstruction Error Metrics
+    # 11. Reconstruction Error Metrics
     em_sum = load(run_dir, "error_metrics", "summary.csv")
     if em_sum is not None and not em_sum.empty:
         tbl = _simple_table([
@@ -515,7 +527,7 @@ def section_overview(run_dir: Path) -> str:
             {"Metric": "Median R²",  "Value": f"{em_sum['Median_R2'].median():.4f}"},
             {"Metric": "Mean nBias", "Value": f"{em_sum['Mean_nBias'].mean():.4f}"},
         ])
-        blocks.append("**10. Reconstruction Error Metrics**\n\n" + tbl)
+        blocks.append("**11. Reconstruction Error Metrics**\n\n" + tbl)
 
     return "\n\n".join(blocks) if blocks else "_No check results found._"
 
@@ -1129,6 +1141,75 @@ def section_correlations(run_dir: Path, fig_dir: Path) -> tuple:
 
 
 # ---------------------------------------------------------------------------
+# KS test section
+# ---------------------------------------------------------------------------
+
+def section_ks_test(run_dir: Path, fig_dir: Path) -> tuple:
+    results = load(run_dir, "ks_test", "results.csv")
+    summary = load(run_dir, "ks_test", "summary.csv")
+
+    if results is None:
+        return "_KS test results not found. Run `validate.py` first._\n", []
+
+    blocks  = []
+    figures = []
+
+    n_total = len(summary) if summary is not None else 0
+    n_fail  = (summary["Status"] == "FAIL").sum() if summary is not None else 0
+    n_pass  = n_total - n_fail
+    alpha_c = results["Alpha_corrected"].iloc[0] if not results.empty else "n/a"
+    mean_d  = results["KS_stat"].mean() if not results.empty else np.nan
+
+    blocks.append(
+        f"**Variables tested:** {n_total}  \n"
+        f"**Bonferroni-corrected α:** {alpha_c}  \n"
+        f"**PASS:** {n_pass} &nbsp; **FAIL:** {n_fail}  \n"
+        f"**Mean D statistic:** {mean_d:.4f}  \n"
+        f"_D < 0.1 = negligible, 0.1–0.3 = small, ≥ 0.3 = large effect._"
+    )
+
+    # Per-variable table
+    if summary is not None and not summary.empty:
+        cols = ["Variable", "KS_stat", "P_value_corrected", "Effect_size", "Status"]
+        cols = [c for c in cols if c in summary.columns]
+        tbl  = summary[cols].rename(columns={
+            "KS_stat":           "D statistic",
+            "P_value_corrected": "p (corrected)",
+            "Effect_size":       "Effect size",
+        })
+        blocks.append(
+            "### Per-variable Results\n\n"
+            "_Sorted by D statistic descending. p-values are Bonferroni-corrected._\n\n"
+            + md_table(tbl)
+        )
+
+    # Figure: D statistic bar chart coloured by pass/fail
+    if summary is not None and not summary.empty:
+        s = summary.sort_values("KS_stat", ascending=True)
+        colours = ["#A32D2D" if st == "FAIL" else "#1D9E75" for st in s["Status"]]
+
+        fig, ax = plt.subplots(figsize=(7, max(3, len(s) * 0.45)))
+        ax.barh(s["Variable"], s["KS_stat"], color=colours, alpha=0.85)
+        ax.axvline(0.1, color="gray",  linewidth=0.8, linestyle="--", label="Small effect (0.1)")
+        ax.axvline(0.3, color="#BA7517", linewidth=0.8, linestyle="--", label="Large effect (0.3)")
+        ax.legend(fontsize=7)
+        style_ax(ax, title="KS Statistic by Variable",
+                 xlabel="D statistic (max CDF difference)")
+        fig.tight_layout()
+        rel = save_fig(fig, fig_dir, "ks_test_by_variable")
+        figures.append(rel)
+        blocks.append(
+            f"### D Statistic by Variable\n\n"
+            f"_Green = PASS, red = FAIL (Bonferroni-corrected). "
+            f"D measures the maximum gap between the emulator and IAM CDFs — "
+            f"larger values indicate greater distributional divergence._\n\n"
+            f"![KS statistic by variable]({rel})"
+        )
+
+    return "\n\n".join(blocks) + "\n", figures
+
+
+# ---------------------------------------------------------------------------
 # Variance fidelity section
 # ---------------------------------------------------------------------------
 
@@ -1423,10 +1504,11 @@ def main():
     sf_body          = section_soft_future(run_dir)
     vc_body          = section_sci_checks(run_dir)
     co_body, co_figs = section_correlations(run_dir, fig_dir)
+    ks_body, ks_figs = section_ks_test(run_dir, fig_dir)
     vf_body, vf_figs = section_variance_fidelity(run_dir, fig_dir)
     em_body, em_figs = section_error_metrics(run_dir, fig_dir)
 
-    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs + vf_figs + em_figs
+    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs + ks_figs + vf_figs + em_figs
     print(f"  Figures generated: {len(all_figs)}")
 
     report = f"""# {title}
@@ -1523,7 +1605,19 @@ the correlations present in real IAM data. Methodology follows Li et al. (2025) 
 
 ---
 
-## 9. Variance Fidelity
+## 9. KS Distributional Test
+
+_Two-sample Kolmogorov-Smirnov test comparing the full distribution of emulator
+outputs against IAM ground truth per variable. The D statistic is the maximum
+absolute gap between the two empirical CDFs — it captures distributional differences
+in shape, skewness, and modality that mean- or variance-level checks miss. p-values
+are Bonferroni-corrected across all variables to control the familywise error rate._
+
+{ks_body}
+
+---
+
+## 10. Variance Fidelity
 
 _Checks whether the emulator reproduces the marginal variance of each output
 variable. Inter-variable correlation checks preserve the shape of variable
@@ -1536,7 +1630,7 @@ close to 1.0. Applicable to both reconstruction and generative runs._
 
 ---
 
-## 10. Reconstruction Error Metrics
+## 11. Reconstruction Error Metrics
 
 _Applies to reconstruction emulators only (1:1 correspondence between predicted
 and ground truth scenarios). Normalised RMSE (nRMSE = RMSE / mean|ground truth|)
