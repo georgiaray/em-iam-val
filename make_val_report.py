@@ -440,8 +440,8 @@ def section_overview(run_dir: Path) -> str:
         blocks.append("**3. Regional Consistency**\n\n_No complete regional groupings in this dataset._")
 
     # 4. Physical Bounds Check
-    bc_raw    = load(run_dir, "bounds_check", "results.csv")
-    gt_bc_raw = load(run_dir, "bounds_check_ground_truth", "results.csv")
+    bc_raw    = load(run_dir, "physical_bounds_check", "results.csv")
+    gt_bc_raw = None   # physical bounds check does not use ground truth
     if bc_raw is not None:
         bc, _ = _adapt_bounds(bc_raw)
         if bc is not None:
@@ -805,20 +805,21 @@ def section_regional(run_dir: Path, fig_dir: Path) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Bounds check section
+# Bounds check sections
 # ---------------------------------------------------------------------------
 
 def section_bounds(run_dir: Path, fig_dir: Path) -> tuple:
-    bc_raw    = load(run_dir, "bounds_check",              "results.csv")
-    gt_bc_raw = load(run_dir, "bounds_check_ground_truth", "results.csv")
+    """Physical bounds check section (non-negativity and hard constraints)."""
+    bc_raw    = load(run_dir, "physical_bounds_check", "results.csv")
+    gt_bc_raw = None   # physical bounds check does not use ground truth
 
     if bc_raw is None:
-        return "_Bounds check results not found. Run `validate.py` first._\n", []
+        return "_Physical bounds check results not found. Run `validate.py` first._\n", []
 
     bc, viol    = _adapt_bounds(bc_raw)
-    gt_bc, _    = _adapt_bounds(gt_bc_raw) if gt_bc_raw is not None else (None, None)
+    gt_bc       = None   # physical bounds check does not produce ground truth output
 
-    blocks  = [] if gt_bc is not None else [_gt_missing_note("bounds_check")]
+    blocks  = []
     figures = []
 
     total  = bc["n_timesteps"].sum()
@@ -905,11 +906,80 @@ def section_bounds(run_dir: Path, fig_dir: Path) -> tuple:
             "_The most extreme bounds violation is shown below._\n\n"
             + _example_bounds_failure(viol, "predictions")
         )
-    gt_viol_df = load(run_dir, "bounds_check_ground_truth", "results.csv")
-    if gt_viol_df is not None:
-        _, gt_viol_raw = _adapt_bounds(gt_viol_df)
-        if gt_viol_raw is not None and not gt_viol_raw.empty:
-            blocks.append(_example_bounds_failure(gt_viol_raw, "ground truth"))
+
+    return "\n\n".join(blocks), figures
+
+
+# ---------------------------------------------------------------------------
+# Derived bounds check section
+# ---------------------------------------------------------------------------
+
+def section_derived_bounds(run_dir: Path, fig_dir: Path) -> tuple:
+    """Derived bounds check section (IAM envelope from ground truth percentiles)."""
+    bc_raw    = load(run_dir, "derived_bounds_check", "results.csv")
+    gt_bc_raw = None   # derived bounds are derived FROM ground truth, not checked against it
+
+    if bc_raw is None:
+        return (
+            "_Derived bounds check results not found. "
+            "Run `validate.py` with `--ground_truth` to generate them._\n",
+            [],
+        )
+
+    bc, viol = _adapt_bounds(bc_raw)
+    blocks   = []
+    figures  = []
+
+    if bc is None:
+        return "_Derived bounds check produced no results._\n", []
+
+    total   = bc["n_timesteps"].sum()
+    n_viol  = bc["n_violations"].sum()
+    vr      = 100 * n_viol / total if total else 0.0
+    n_clean = bc["passed"].sum()
+    blocks.append(
+        f"**Timesteps checked:** {total:,}  \n"
+        f"**Violations:** {int(n_viol):,} ({vr:.3f}%)  \n"
+        f"**Fully clean scenario-regions:** {int(n_clean):,} / {len(bc):,}"
+    )
+
+    by_var = (
+        bc.groupby("Variable")
+        .agg(n_violations=("n_violations", "sum"), n_timesteps=("n_timesteps", "sum"),
+             n_below=("n_below_lower", "sum"), n_above=("n_above_upper", "sum"))
+        .reset_index()
+    )
+    by_var["rate_%"] = 100 * by_var["n_violations"] / by_var["n_timesteps"]
+    by_var = by_var.sort_values("n_violations", ascending=True)
+
+    if by_var["n_violations"].sum() > 0:
+        fig, ax = plt.subplots(figsize=(7, max(3, len(by_var) * 0.45)))
+        ax.barh(by_var["Variable"], by_var["n_below"], color=C_PRED, alpha=0.8,
+                label="Below lower bound")
+        ax.barh(by_var["Variable"], by_var["n_above"], left=by_var["n_below"],
+                color=C_GT, alpha=0.7, label="Above upper bound")
+        style_ax(ax, title="Derived Bounds Violations by Variable",
+                 xlabel="Number of violating timesteps")
+        ax.legend(fontsize=8)
+        fig.tight_layout()
+        rel = save_fig(fig, fig_dir, "derived_bounds_violations_by_variable")
+        figures.append(rel)
+        blocks.append(
+            f"### Violations by Variable\n\n"
+            f"![Derived bounds violations by variable]({rel})"
+        )
+    else:
+        blocks.append(
+            "### Violations by Variable\n\n"
+            "✓ No violations detected — all predictions within IAM ground truth envelope."
+        )
+
+    if viol is not None and not viol.empty:
+        blocks.append(
+            "### Example Violation\n\n"
+            "_The most extreme derived bounds violation is shown below._\n\n"
+            + _example_bounds_failure(viol, "predictions")
+        )
 
     return "\n\n".join(blocks), figures
 
@@ -1499,7 +1569,8 @@ def main():
     sc_body, sc_figs = section_sum_check(run_dir, fig_dir)
     pl_body, pl_figs = section_plausibility(run_dir, fig_dir)
     rc_body, rc_figs = section_regional(run_dir, fig_dir)
-    bc_body, bc_figs = section_bounds(run_dir, fig_dir)
+    bc_body,  bc_figs  = section_bounds(run_dir, fig_dir)
+    dbc_body, dbc_figs = section_derived_bounds(run_dir, fig_dir)
     hh_body          = section_hard_historical(run_dir)
     sf_body          = section_soft_future(run_dir)
     vc_body          = section_sci_checks(run_dir)
@@ -1508,7 +1579,7 @@ def main():
     vf_body, vf_figs = section_variance_fidelity(run_dir, fig_dir)
     em_body, em_figs = section_error_metrics(run_dir, fig_dir)
 
-    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + co_figs + ks_figs + vf_figs + em_figs
+    all_figs = sc_figs + pl_figs + rc_figs + bc_figs + dbc_figs + co_figs + ks_figs + vf_figs + em_figs
     print(f"  Figures generated: {len(all_figs)}")
 
     report = f"""# {title}
@@ -1555,14 +1626,27 @@ _Checks that predicted World values equal the sum of predicted subregion values
 
 ## 4. Physical Bounds Check
 
-_Checks predictions against hard physical lower bounds (energy variables ≥ 0)
-and empirical per-variable bounds derived from ground truth._
+_Checks predictions against hard physical lower bounds (e.g. energy variables ≥ 0).
+These are structural/mathematical constraints that must hold by definition,
+independent of the ground truth. Belongs to the **structural/mathematical
+constraint validation** family._
 
 {bc_body}
 
 ---
 
-## 5. Hard Historical Constraints
+## 5. Derived Bounds Check
+
+_Checks predictions against empirical bounds derived from the ground truth IAM
+output (1st–99th percentiles per variable). The IAM's own output distribution
+encodes domain knowledge about plausible values. Belongs to the **historical
+and domain knowledge comparison** family._
+
+{dbc_body}
+
+---
+
+## 6. Hard Historical Constraints
 
 _Checks World-level predictions at 2020 against AR6 vetting reference values
 (Nicholls et al. 2022, Table 11). PASS = within IP range, WARN = within outer
@@ -1573,7 +1657,7 @@ domain knowledge comparison** validation family._
 
 ---
 
-## 6. Soft Future Constraints
+## 7. Soft Future Constraints
 
 _Checks World-level predictions at 2030–2040 against domain-knowledge
 plausibility bounds from the AR6 vetting process (Table 11). Belongs to the
@@ -1583,7 +1667,7 @@ plausibility bounds from the AR6 vetting process (Table 11). Belongs to the
 
 ---
 
-## 7. SCI Vetting Checks
+## 8. SCI Vetting Checks
 
 _Scenario vetting criteria from Verpoort et al. (2025), the IAMC's published
 successor to the AR6 vetting criteria. Checks CO₂ EIP against CEDS-2025 data
@@ -1595,7 +1679,7 @@ FAIL = outside strong-concern (exclusion-level) bounds._
 
 ---
 
-## 8. Inter-variable Correlations
+## 9. Inter-variable Correlations
 
 _Pearson r² between all variable pairs at years 2030, 2050, and 2100 — comparing
 predictions against AR6 ground truth. A well-calibrated emulator should preserve
@@ -1605,7 +1689,7 @@ the correlations present in real IAM data. Methodology follows Li et al. (2025) 
 
 ---
 
-## 9. KS Distributional Test
+## 10. KS Distributional Test
 
 _Two-sample Kolmogorov-Smirnov test comparing the full distribution of emulator
 outputs against IAM ground truth per variable. The D statistic is the maximum
@@ -1617,7 +1701,7 @@ are Bonferroni-corrected across all variables to control the familywise error ra
 
 ---
 
-## 10. Variance Fidelity
+## 11. Variance Fidelity
 
 _Checks whether the emulator reproduces the marginal variance of each output
 variable. Inter-variable correlation checks preserve the shape of variable

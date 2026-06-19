@@ -11,7 +11,7 @@ Usage:
         --run_id shin_01
 
     # Run only specific checks:
-    python validate.py ... --only bounds_check hard_historical_constraints
+    python validate.py ... --only physical_bounds_check derived_bounds_check hard_historical_constraints
 
     # Skip specific checks:
     python validate.py ... --skip regional_consistency
@@ -39,7 +39,8 @@ COMMON_CHECKS = [
     ("common.check_plausibility",          "Growth rate plausibility"),
     ("common.sum_check",                    "Hierarchy sum check"),
     ("common.regional_consistency",         "Regional consistency"),
-    ("common.bounds_check",                 "Physical bounds"),
+    ("common.physical_bounds_check",         "Physical bounds"),
+    ("common.derived_bounds_check",         "Derived bounds (IAM envelope)"),
     ("common.hard_historical_constraints",  "Hard historical constraints (WGIII/AR6)"),
     ("common.soft_future_constraints",      "Soft future constraints (WGIII/AR6)"),
     ("common.sci_checks",         "SCI vetting checks"),
