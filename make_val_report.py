@@ -47,6 +47,29 @@ def load(run_dir: Path, check: str, filename: str) -> Optional[pd.DataFrame]:
         return pd.DataFrame()  # file exists but is empty (e.g. no results for this check)
 
 
+def _skipped_section_note(run_dir: Path, check: str) -> str:
+    """Render a note for a check that ran but produced no results (i.e. was skipped).
+
+    Reads the unique skip reason(s) from skipped.txt so the report explains why a
+    check was not evaluated (e.g. no World-level data) rather than crashing or
+    silently omitting it.
+    """
+    skip_path = run_dir / check / "skipped.txt"
+    reason = ""
+    if skip_path.exists():
+        reasons = []
+        for line in skip_path.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            r = line.split(": ", 1)[-1]
+            if r not in reasons:
+                reasons.append(r)
+        reason = "; ".join(reasons)
+    note = f" Reason: {reason}." if reason else ""
+    return f"_Check skipped — no results generated.{note}_\n"
+
+
 def md_table(df: pd.DataFrame, fmt: Optional[dict] = None) -> str:
     def _esc(s): return str(s).replace("|", "\\|")
     fmt = fmt or {}
@@ -243,6 +266,12 @@ def _adapt_plausibility(df: pd.DataFrame, bounds: pd.DataFrame = None):
     if df is None or df.empty:
         return None
     df = df.copy()
+    # Exclude SKIP rows (undefined growth rates — starting value below the
+    # near-zero floor). They are neither passes nor violations and must be left
+    # out of the denominator, mirroring _adapt_regional.
+    df = df[df["Status"] != "SKIP"].copy()
+    if df.empty:
+        return None
     df["violation"] = df["Status"] == "FAIL"
     df["severity"]  = np.nan  # not stored in new format
     df["Year"]      = df["Year_To"]
@@ -440,24 +469,18 @@ def section_overview(run_dir: Path) -> str:
         blocks.append("**3. Regional Consistency**\n\n_No complete regional groupings in this dataset._")
 
     # 4. Physical Bounds Check
+    # Physical bounds are structural/mathematical constraints (e.g. non-negativity)
+    # that hold by definition and do not use ground truth — so no GT column.
     bc_raw    = load(run_dir, "physical_bounds_check", "results.csv")
-    gt_bc_raw = None   # physical bounds check does not use ground truth
     if bc_raw is not None:
         bc, _ = _adapt_bounds(bc_raw)
         if bc is not None:
             total  = bc["n_timesteps"].sum()
             n_viol = bc["n_violations"].sum()
             pr     = 100 * (1 - n_viol / total) if total else 100.0
-            gt_pr  = GT_MISSING
-            if gt_bc_raw is not None:
-                gt_bc, _ = _adapt_bounds(gt_bc_raw)
-                if gt_bc is not None:
-                    gt_t  = gt_bc["n_timesteps"].sum()
-                    gt_pr = _fmt_pr(100 * (1 - gt_bc["n_violations"].sum() / gt_t)) if gt_t else GT_MISSING
             tbl = _simple_table([
                 {"Metric": "Pass rate (timesteps)",
-                 "Predictions": _fmt_pr(pr),
-                 "Ground Truth": gt_pr},
+                 "Predictions": _fmt_pr(pr)},
             ])
             blocks.append("**4. Physical Bounds Check**\n\n" + tbl)
 
@@ -995,6 +1018,8 @@ def section_hard_historical(run_dir: Path) -> str:
 
     if pred is None:
         return "_Hard historical constraints results not found. Run `validate.py` first._\n"
+    if pred.empty:
+        return _skipped_section_note(run_dir, "hard_historical_constraints")
 
     blocks = []
 
@@ -1058,6 +1083,8 @@ def section_soft_future(run_dir: Path) -> str:
 
     if pred is None:
         return "_Soft future constraints results not found. Run `validate.py` first._\n"
+    if pred.empty:
+        return _skipped_section_note(run_dir, "soft_future_constraints")
 
     blocks = []
     summary = pred.groupby("constraint_name")["status"].value_counts().unstack(fill_value=0).reset_index()
@@ -1111,6 +1138,8 @@ def section_sci_checks(run_dir: Path) -> str:
 
     if pred is None:
         return "_Verpoort constraints results not found. Run `validate.py` first._\n"
+    if pred.empty:
+        return _skipped_section_note(run_dir, "sci_checks")
 
     blocks = []
 

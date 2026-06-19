@@ -392,8 +392,11 @@ def run_constraint(long: pd.DataFrame, constraint: dict,
 def _run_all(long: pd.DataFrame, vc: pd.DataFrame, ref: dict, world_region: str):
     filtered, fallback = _filter_world(long, world_region)
     if fallback:
-        print(f"  [WARN] '{world_region}' not found — running against all regions")
-        filtered = long
+        msg = (f"no '{world_region}' region in dataset — these are World-level "
+               f"checks and cannot be meaningfully evaluated on regional data")
+        print(f"  [SKIP] {msg}")
+        skipped = [(c["name"], msg) for c in CONSTRAINTS]
+        return pd.DataFrame(), skipped, []
 
     available_vars  = set(filtered["Variable"].unique())
     available_years = set(filtered["Year"].unique())

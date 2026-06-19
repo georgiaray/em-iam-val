@@ -107,6 +107,19 @@ def flag_violations(
     result["Status"] = "PASS"
     result["Violation_Type"] = ""
 
+    # Transitions whose growth rate is undefined carry no information about
+    # plausibility and must be EXCLUDED from pass/fail accounting — not counted
+    # as violations. A growth rate is undefined (NaN) when the starting value is
+    # below the near-zero floor applied in compute_growth_rates (or when a value
+    # is missing); dividing by such a denominator produces meaningless rates.
+    # These are marked SKIP, mirroring the convention used by regional_consistency,
+    # so the report and summary leave them out of the denominator.
+    nonfinite = ~np.isfinite(result["Growth_Rate"])
+    result.loc[nonfinite, "Status"] = "SKIP"
+    result.loc[nonfinite, "Violation_Type"] = (
+        "Excluded (undefined growth rate — starting value below near-zero floor)"
+    )
+
     for idx, bounds_row in bounds.iterrows():
         var = bounds_row["Variable"]
         lower = bounds_row["Lower_Bound"]
@@ -115,19 +128,16 @@ def flag_violations(
         var_mask = result["Variable"] == var
         gr = result.loc[var_mask, "Growth_Rate"]
 
-        # Exclude infinities from comparison
+        # Only finite growth rates are compared against bounds; non-finite ones
+        # have already been marked SKIP above and must not be reclassified.
         below = (gr < lower) & np.isfinite(gr)
         above = (gr > upper) & np.isfinite(gr)
-        infinite = ~np.isfinite(gr)
 
         result.loc[var_mask & below, "Status"] = "FAIL"
         result.loc[var_mask & below, "Violation_Type"] = f"Below lower bound ({lower:.4f})"
 
         result.loc[var_mask & above, "Status"] = "FAIL"
         result.loc[var_mask & above, "Violation_Type"] = f"Above upper bound ({upper:.4f})"
-
-        result.loc[var_mask & infinite, "Status"] = "FAIL"
-        result.loc[var_mask & infinite, "Violation_Type"] = "Infinite growth rate (zero denominator)"
 
     return result
 
@@ -191,18 +201,22 @@ def run(
     # Flag violations
     results = flag_violations(pred_growth, bounds)
 
-    # Generate summary
+    # Generate summary. SKIP rows (undefined growth rates) are excluded from the
+    # pass/fail denominator — they are neither passes nor violations.
     pass_count = (results["Status"] == "PASS").sum()
     fail_count = (results["Status"] == "FAIL").sum()
+    skip_count = (results["Status"] == "SKIP").sum()
     total = pass_count + fail_count
     summary = pd.DataFrame([{
         "Pass_Count": pass_count,
         "Fail_Count": fail_count,
+        "Skip_Count": skip_count,
         "Pass_Rate": pass_count / total if total > 0 else 1.0,
     }])
 
-    # Determine pass
-    passed = (results["Status"] == "PASS").all()
+    # Determine pass: a run passes when there are no FAILs among the
+    # evaluable (finite) transitions. SKIP rows do not count against it.
+    passed = fail_count == 0
 
     # Save outputs
     out_path = make_out_dir(out_dir, run_id, "check_plausibility")
@@ -213,10 +227,12 @@ def run(
         gt_results = flag_violations(gt_growth, bounds)
         gt_pass = (gt_results["Status"] == "PASS").sum()
         gt_fail = (gt_results["Status"] == "FAIL").sum()
+        gt_skip = (gt_results["Status"] == "SKIP").sum()
         gt_total = gt_pass + gt_fail
         gt_summary = pd.DataFrame([{
             "Pass_Count": gt_pass,
             "Fail_Count": gt_fail,
+            "Skip_Count": gt_skip,
             "Pass_Rate": gt_pass / gt_total if gt_total > 0 else 1.0,
         }])
         gt_out_path = make_out_dir(out_dir, run_id, "check_plausibility_ground_truth")
