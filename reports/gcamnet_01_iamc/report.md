@@ -1,7 +1,7 @@
 # Validation Report: gcamnet_01_iamc
 
 **Run ID:** `gcamnet_01_iamc`
-**Generated:** 2026-06-18 16:08
+**Generated:** 2026-06-19 09:54
 **Results:** `results/gcamnet_01_iamc/`
 
 ---
@@ -12,7 +12,7 @@
 
 | Metric | Predictions | Ground Truth |
 | --- | --- | --- |
-| Pass rate (timesteps) | 40.3% | 40.3% |
+| Pass rate (timesteps) | 98.0% | 98.0% |
 
 **3. Regional Consistency**
 
@@ -20,30 +20,9 @@ _No complete regional groupings in this dataset._
 
 **4. Physical Bounds Check**
 
-| Metric | Predictions | Ground Truth |
-| --- | --- | --- |
-| Pass rate (timesteps) | 99.7% | ⚠ run validate.py with --ground_truth |
-
-**5. Hard Historical Constraints** _(PASS = within IP range, WARN = within outer tolerance)_
-
-| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| nuclear_energy_2020 | 0.0% | 0.1% | 99.9% | 0.0% | 0.1% | 99.9% |
-| solar_wind_2020 | 1.7% | 3.8% | 94.5% | 1.7% | 3.6% | 94.7% |
-
-**6. Soft Future Constraints**
-
-| Sub-check | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- |
-| nuclear_electricity_2030 | 100.0% | 0.0% | 100.0% | 0.0% |
-
-**7. SCI Vetting Checks**
-
-| Sub-check | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Warn (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| hist_primary_coal | 0.0% | 0.0% | 100.0% | 0.0% | 0.0% | 100.0% |
-| hist_primary_gas | 0.0% | 0.0% | 100.0% | 0.0% | 0.0% | 100.0% |
-| hist_primary_oil | 0.0% | 0.0% | 100.0% | 0.0% | 0.0% | 100.0% |
+| Metric | Predictions |
+| --- | --- |
+| Pass rate (timesteps) | 99.7% |
 
 **8. Inter-variable Correlations**
 
@@ -83,11 +62,11 @@ _Sum check results not found. Run `validate.py` first._
 _For each predicted trajectory, checks that period-on-period growth rates
 fall within empirically-derived bounds from the ground truth data._
 
-**Total timesteps evaluated:** 307,200  
-**Violations:** 183,329 (59.68%)  
+**Total timesteps evaluated:** 126,411  
+**Violations:** 2,540 (2.01%)  
 
-**Ground truth — violation rate:** 59.65%  
-_(+0.02pp difference: predictions vs ground truth)_
+**Ground truth — violation rate:** 2.01%  
+_(-0.01pp difference: predictions vs ground truth)_
 
 ### Violation Rate by Variable
 
@@ -190,16 +169,7 @@ _Checks World-level predictions at 2020 against AR6 vetting reference values
 tolerance, FAIL = outside outer tolerance. Belongs to the **historical and
 domain knowledge comparison** validation family._
 
-| Sub-check | N | Pass (%) | Warn (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| nuclear_energy_2020 | 1280 | 0.0000 | 0.1000 | 99.9000 | 0.0000 | 100.0000 |
-| solar_wind_2020 | 1280 | 1.7000 | 3.8000 | 94.5000 | 1.8000 | 98.2000 |
-
-
-_Skipped sub-checks (required variables absent): co2_eip_2020: ['Emissions|CO2'], ch4_2020: ['Emissions|CH4'], co2_change_2010_2020: ['Emissions|CO2'], ccs_2020: ['Carbon Sequestration|CCS'], primary_energy_2020: ['Primary Energy']_
-
-
-<p style="color:red;font-weight:bold">⚠️ POSSIBLE UNIT MISMATCH: median 0.06108 is ~160x lower than expected 9.77 EJ. Check units for Primary Energy|Nuclear</p>
+_Check skipped — no results generated. Reason: no 'World' region in dataset — these are World-level checks and cannot be meaningfully evaluated on regional data._
 
 
 ---
@@ -210,12 +180,7 @@ _Checks World-level predictions at 2030–2040 against domain-knowledge
 plausibility bounds from the AR6 vetting process (Table 11). Belongs to the
 **historical and domain knowledge comparison** validation family._
 
-| Sub-check | N | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- |
-| nuclear_electricity_2030 | 1280 | 100.0000 | 0.0000 | 100.0000 | 0.0000 |
-
-
-_Skipped sub-checks (required variables absent): co2_not_negative_2030: ['Emissions|CO2'], ccs_2030: ['Carbon Sequestration|CCS'], ch4_2040: ['Emissions|CH4']_
+_Check skipped — no results generated. Reason: no 'World' region in dataset — these are World-level checks and cannot be meaningfully evaluated on regional data._
 
 
 ---
@@ -228,23 +193,7 @@ at four anchor years (2010–2025), and CCS feasibility at 2030, 2035, and 2040.
 Status: PASS = within medium-concern bounds, WARN = within strong-concern bounds,
 FAIL = outside strong-concern (exclusion-level) bounds._
 
-| Sub-check | N | Pass (%) | Fail (%) | GT Pass (%) | GT Fail (%) |
-| --- | --- | --- | --- | --- | --- |
-| hist_primary_coal | 5120 | 0.0000 | 100.0000 | 0.0000 | 100.0000 |
-| hist_primary_gas | 5120 | 0.0000 | 100.0000 | 0.0000 | 100.0000 |
-| hist_primary_oil | 5120 | 0.0000 | 100.0000 | 0.0000 | 100.0000 |
-
-
-_Not run: hist_co2_eip (['Emissions|CO2']), nearterm_ccs (['Carbon Sequestration|CCS']), longterm_ccs_2035 (['Carbon Sequestration|CCS']), longterm_ccs_2040 (['Carbon Sequestration|CCS'])_
-
-
-<p style="color:red;font-weight:bold">⚠️ POSSIBLE UNIT MISMATCH: median 0.1534 is ~1011x lower than expected 155 EJ. Check units for Primary Energy|Coal</p>
-
-
-<p style="color:red;font-weight:bold">⚠️ POSSIBLE UNIT MISMATCH: median 0.7803 is ~231x lower than expected 180 EJ. Check units for Primary Energy|Oil</p>
-
-
-<p style="color:red;font-weight:bold">⚠️ POSSIBLE UNIT MISMATCH: median 0.9337 is ~139x lower than expected 130 EJ. Check units for Primary Energy|Gas</p>
+_Check skipped — no results generated. Reason: no 'World' region in dataset — these are World-level checks and cannot be meaningfully evaluated on regional data._
 
 
 ---
